@@ -1,0 +1,17 @@
+<!--
+ - Created by adpel on 17/06/2025.
+ -->
+
+<!-- userAvailabilityBadge.html -->
+<template>
+    <div style="height: 300px;" >
+        <lightning-card title="Availability" icon-name="action:new_group" variant="narrow">
+            <lightning-datatable
+                    key-field="Id"
+                    data={usersAvailability}
+                    columns={columns}
+                    draft-values={draftValues}>
+            </lightning-datatable>
+        </lightning-card>
+    </div>
+</template>

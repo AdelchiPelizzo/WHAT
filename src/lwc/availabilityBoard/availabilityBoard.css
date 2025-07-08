@@ -1,0 +1,71 @@
+/**
+ * Created by adpel on 02/07/2025.
+ */
+.board {
+  max-width: 900px;
+  margin: 0 auto;
+  font-family: "Salesforce Sans", Arial, sans-serif;
+  font-size: 1rem;
+  color: #333;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+thead {
+  background-color: #005fb2;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+th, td {
+  padding: 0.75em 1em;
+  text-align: left;
+}
+
+tbody tr:nth-child(odd) {
+  background-color: #f9f9f9;
+}
+
+tbody tr:hover {
+  background-color: #d6e9ff;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.status-badge {
+  padding: 0.25em 0.7em;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: white;
+  display: inline-block;
+  user-select: none;
+}
+
+.status-badge.in {
+  background-color: #28a745; /* green */
+}
+
+.status-badge.at-lunch {
+  background-color: #ffc107; /* yellow */
+  color: #333;
+}
+
+.status-badge.ooo {
+  background-color: #dc3545; /* red */
+}
+
+.status-badge.out {
+  background-color: #dc3545;  /* red (or any colour you prefer) */
+}
+
+
+/* Add more status colors as needed */

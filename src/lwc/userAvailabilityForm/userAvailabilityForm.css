@@ -1,0 +1,16 @@
+/**
+ * Created by adpel on 06/07/2025.
+ */
+/* employeeAvailability.css */
+.status-radio {
+    /* put them side‑by‑side */
+    display:inline-block;
+    margin-right:1rem;
+}
+
+.mySpinnerBackdrop {
+    z-index: 9000;   /* toast container is 9002 */
+}
+.mySpinner {
+    z-index: 9001;
+}

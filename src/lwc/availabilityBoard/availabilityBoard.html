@@ -1,0 +1,79 @@
+<!--
+ - Created by adpel on 01/07/2025.
+ -->
+
+<!-- Availability Board -->
+<template>
+    <!-- ░░░ Pop-out Mode: Show ONLY the board ░░░ -->
+    <template if:true={isPopout}>
+        <div class="board">
+            <table>
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>From</th>
+                    <th>Until</th>
+                    <th>Next Avail.</th>
+                    <th>Notes</th>
+                </tr>
+                </thead>
+                <tbody>
+                <template for:each={processedRows} for:item="row">
+                    <tr key={row.userRecordId}>
+                        <td>{row.userFirstName} {row.userLastName}</td>
+                        <td>
+                            <span class={row.statusClass}>{row.Status}</span>
+                        </td>
+                        <td>{row.From}</td>
+                        <td>{row.Until}</td>
+                        <td>{row.NextAvail}</td>
+                        <td>{row.Notes}</td>
+                    </tr>
+                </template>
+                </tbody>
+            </table>
+        </div>
+    </template>
+
+    <!-- ░░░ Normal Mode: Full UI ░░░ -->
+    <template if:false={isPopout}>
+        <div class="board">
+            <table>
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>From</th>
+                    <th>Until</th>
+                    <th>Next Avail.</th>
+                    <th>Notes</th>
+                </tr>
+                </thead>
+                <tbody>
+                <template for:each={processedRows} for:item="row">
+                    <tr key={row.userRecordId}>
+                        <td>{row.userFirstName} {row.userLastName}</td>
+                        <td>
+                            <span class={row.statusClass}>{row.Status}</span>
+                        </td>
+                        <td>{row.From}</td>
+                        <td>{row.Until}</td>
+                        <td>{row.NextAvail}</td>
+                        <td>{row.Notes}</td>
+                    </tr>
+                </template>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pop-out button -->
+        <lightning-button
+                label="Pop Out Availability Board"
+                onclick={openPopout}>
+        </lightning-button>
+    </template>
+</template>
+
+
+

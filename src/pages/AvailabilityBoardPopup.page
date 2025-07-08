@@ -1,0 +1,396 @@
+<!--
+ - Created by adpel on 03/07/2025.
+ -->
+
+<apex:page controller="adelwhat.AvailabilityService" showHeader="false" sidebar="false"  cache="false">
+
+        <!-- Built‑in CometD -->
+    <!-- load UMD build, NOT module -->
+    <apex:includeScript value="{!URLFOR($Resource.cometd)}" />
+    <apex:includeScript value="{!URLFOR($Resource.ackExtension)}" />
+    <apex:includeScript value="{!URLFOR($Resource.replayExtension)}" />
+
+
+
+
+    <!--    <apex:includeScript value="/cometd/61.0/cometd.min.js"/>-->
+
+    <script>
+    document.addEventListener('DOMContentLoaded', initCometD);
+
+    function initCometD() {
+        const sessionId = "{!$Api.Session_ID}";
+        console.log('sessionId >>', sessionId);
+
+        // ─── Feature‑detect CometD ────────────────────────────────────────────────
+        if (!window.org?.cometd?.CometD) {
+            console.error('CometD client not loaded or wrong version');
+            return;                 // bail out early
+        }
+        console.log('CometD library found:', window.org.cometd.CometD);
+
+        // ─── Single shared instance ─────────────────────────────────────────────
+        const cometd = new org.cometd.CometD();
+        window.cometd = cometd;     // expose globally if other scripts need it
+
+        cometd.configure({
+            url: `${window.location.protocol}//${window.location.host}/cometd/61.0/`,
+            requestHeaders: { Authorization: `OAuth ${sessionId}` },
+            appendMessageTypeToURL: false
+        });
+        cometd.websocketEnabled = false;   // fallback to long‑poll
+
+        // ─── Handshake & subscriptions ──────────────────────────────────────────
+        cometd.handshake((hs) => {
+            console.log('Handshake response:', hs);
+            if (!hs.successful) {
+                console.error('Handshake failed', hs);
+                return;
+            }
+            console.log('Handshake successful');
+
+            cometd.addListener('/meta/subscribe', (msg) => {
+                console.log('Subscribe response:', msg);
+                if (!msg.successful) {
+                    console.error('Subscription failed:', msg.error);
+                }
+            });
+
+            cometd.subscribe(
+                '/data/adelwhat__User_Availability__ChangeEvent',
+                -1,
+                (msg) => {
+                    console.log('CDC event in VF', msg);
+                    refreshBoard(msg.data.payload);
+                }
+            );
+        });
+    }
+    /* ------------- helpers ------------- */
+
+    // Find an existing <tr> whose 4th cell (index 3) == userId
+    function findRowByUserId(userId) {
+        const rows = document.querySelectorAll('#board tbody tr');
+        return Array.from(rows).find(
+            r => r.cells[3] && r.cells[3].textContent.trim() === userId
+        );
+    }
+    /* ---------- helpers ---------- */
+
+    // Convert status text to the CSS class you use for the badge colour
+    function badgeClassFor(status) {
+        if (!status) return '';
+        const s = status.toLowerCase();
+        if (s === 'in')         return 'in';
+        if (s === 'at lunch')   return 'at-lunch';
+        if (s === 'ooo' || s === 'out' || s === 'out of office')
+            return 'ooo';
+        return '';
+    }
+     /* ----------------------------------------------------------*/
+    const avail2User = new Map();        // key = availabilityId  →  value = userId
+
+    // Live‑patch or insert a row when CDC fires
+    function refreshBoard(payload) {
+        const { recordIds = [], changeType } = payload.ChangeEventHeader;
+
+        if (!recordIds.length) {
+            console.warn('No record Ids found in CDC event', payload);
+            return;
+        }
+
+        recordIds.forEach(availabilityRecordId => {
+            switch (changeType) {
+                case 'DELETE':
+                case 'GAP_DELETE': {
+                    // Remove row immediately for delete events
+                    const row = document.querySelector(`tr[data-availability-id="${availabilityRecordId}"]`);
+                    if (row) {
+                        const userId = row.dataset.userId;
+                        row.remove();
+                        avail2User.delete(availabilityRecordId);
+                        console.log(`Removed row for availabilityId ${availabilityRecordId} (CDC delete event)`);
+                    } else {
+                        console.warn(`No row found for availabilityId ${availabilityRecordId}`);
+                    }
+                    break;
+                }
+                case 'CREATE':
+                case 'UNDELETE': {
+                    console.log('CREATE/UNDELETE payload:', payload);
+                    // Always fetch full record from Apex for create/un-delete events
+                    fetchAndUpdateRow(availabilityRecordId);
+                    break;
+                }
+                case 'UPDATE': {
+                    // Try patching row from payload, fallback to Apex fetch if not possible
+                    if (!patchRowFromPayload(availabilityRecordId, payload)) {
+                        fetchAndUpdateRow(availabilityRecordId);
+                    }
+                    break;
+                }
+                default:
+                    console.warn('Unhandled changeType:', changeType);
+            }
+        });
+    }
+
+    function patchRowFromPayload(availabilityRecordId, payload) {
+        const row = document.querySelector(`tr[data-availability-id="${availabilityRecordId}"]`);
+        if (!row) return false; // No existing row to patch
+
+        if (payload.adelwhat__Status__c) {
+            const status = payload.adelwhat__Status__c;
+            row.cells[2].innerHTML = `<span class="status-badge ${badgeClassFor(status)}">${status}</span>`;
+            return true;
+        }
+
+        // Add more patchable fields here if needed
+
+        return false; // Nothing patched, fallback needed
+    }
+
+    function fetchAndUpdateRow(availabilityRecordId) {
+        Visualforce.remoting.Manager.invokeAction(
+            '{!$RemoteAction.AvailabilityService.getAvailabilityById}',
+            availabilityRecordId,
+            function (result, event) {
+                console.log('Remoting callback fired for', availabilityRecordId, 'event:', event, 'result:', result);
+
+                if (!event.status) {
+                    if (event.message?.includes('NoDataFound')) {
+                        // Record deleted before fetch completed — remove row
+                        const row = document.querySelector(`tr[data-availability-id="${availabilityRecordId}"]`);
+                        if (row) {
+                            row.remove();
+                            avail2User.delete(availabilityRecordId);
+                            console.log(`Removed row for availabilityId ${availabilityRecordId} (exception fallback)`);
+                        }
+                    } else {
+                        console.error('Remoting error:', event.message || event.type);
+                    }
+                    return;
+                }
+
+                if (result === null) {
+                    // Record not found — remove row if present
+                    const row = document.querySelector(`tr[data-availability-id="${availabilityRecordId}"]`);
+                    if (row) {
+                        row.remove();
+                        avail2User.delete(availabilityRecordId);
+                        console.log(`Removed row for availabilityId ${availabilityRecordId} (null result)`);
+                    }
+                    return;
+                }
+
+//                const userId = result.adelwhat__User__c;
+//                if (!userId) {
+//                    console.warn('Fetched record missing user Id', result);
+//                    return;
+//                }
+
+                const userId  = result.userRecordId;      // map correctly
+                const first   = result.userFirstName || '';
+                const last    = result.userLastName  || '';
+                const status  = result.Status        || '';   // uppercase S in your wrapper
+                // availabilityRecordId is the same variable you already have
+
+                updateRow({
+                  availabilityRecordId,
+                  userId,
+                  first,
+                  last,
+                  status
+                });
+            }
+        );
+    }
+
+    function updateRow({ availabilityRecordId, userId, first, last, status }) {
+        const tbody = document.querySelector('#board tbody');
+        if (!tbody) return;
+
+        avail2User.set(availabilityRecordId, userId);
+
+        let row = document.querySelector(`tr[data-user-id="${userId}"]`);
+        const badge = `<span class="status-badge ${badgeClassFor(status)}">${status}</span>`;
+
+        if (row) {
+            row.cells[2].innerHTML = badge;
+            row.dataset.availabilityId = availabilityRecordId; // keep dataset in sync
+        } else {
+            console.log('creating row');
+            row = document.createElement('tr');
+            row.dataset.userId = userId;
+            row.dataset.availabilityId = availabilityRecordId;
+            row.innerHTML = `
+                <td>${first}</td>
+                <td>${last}</td>
+                <td>${badge}</td>
+                <td>${userId}</td>`;
+            tbody.appendChild(row);
+        }
+    }
+    </script>
+    <style>
+        html, body {
+          height: 100%;
+          margin: 0;
+        }
+
+        body {
+          display: flex;
+          justify-content: center;  /* horizontal centering */
+          align-items: center;      /* vertical centering */
+          font-family: "Salesforce Sans", Arial, sans-serif;
+          background-color: #f9fafb;
+          color: #333;
+          overflow: auto;
+          padding: 20px;
+        }
+
+        .board {
+            max-width: 900px;
+            margin: 0 auto;
+            font-family: "Salesforce Sans", Arial, sans-serif;
+            font-size: 1rem;
+            color: #333;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        thead {
+            background-color: #005fb2;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+
+        th, td {
+            padding: 0.75em 1em;
+            text-align: left;
+        }
+
+        tbody tr:nth-child(odd) {
+            background-color: #f9f9f9;
+        }
+
+        tbody tr:hover {
+            background-color: #d6e9ff;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .status-badge {
+            padding: 0.25em 0.7em;
+            border-radius: 9999px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: white;
+            display: inline-block;
+            user-select: none;
+        }
+
+        .status-badge.in {
+            background-color: #28a745; /* green */
+        }
+
+                /* ✴︎ “Out” – red  (add whichever selector you need) */
+        .status-badge.out,
+        .status-badge.status-out {
+            background: #dc3545;
+        }
+
+        .status-badge.at-lunch {
+            background-color: #ffc107; /* yellow */
+            color: #333;
+        }
+
+        .status-badge.ooo {
+            background-color: #dc3545; /* red */
+        }
+
+        button.close-btn {
+            margin: 15px 0;
+            padding: 8px 16px;
+            background-color: #3498db;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button.close-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .outer {
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+            padding: 20px;          /* was inline */
+            margin: 0 auto;         /* centres in flex body */
+        }
+        .padded-form {             /* replaces inline padding */
+            padding: 25px;
+        }
+    </style>
+    <body>
+    <div id="board" class="board outer">   <!-- inline style removed -->
+        <apex:form styleClass="padded-form">
+            <!-- ✂️ removed inner <div class="board"> -->
+
+            <h2>Team Availability</h2>
+
+            <table>
+                <thead>
+                <tr>
+                    <th scope="col">First Name</th>
+                    <th scope="col">Last Name</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">User Id</th>
+                </tr>
+                </thead>
+                <tbody>
+                <apex:repeat value="{!availabilityList}" var="a">
+                    <tr id="row-{!a.userRecordId}"
+                        data-user-id="{!a.userRecordId}"
+                        data-availability-id="{!a.availabilityId}">
+                        <td><apex:outputText value="{!a.userFirstName}" escape="true"/></td>
+                        <td><apex:outputText value="{!a.userLastName}"  escape="true"/></td>
+                        <td>
+                                <span class="status-badge
+                                     {!IF(a.Status = 'In',        'in', '')}
+                                     {!IF(a.Status = 'Out',       'out', '')}
+                                     {!IF(a.Status = 'At Lunch',  'at-lunch', '')}
+                                     {!IF(a.Status = 'OOO',       'ooo', '')}">
+                                     {!a.Status}
+                                </span>
+                        </td>
+                        <td>{!a.userRecordId}</td>
+                    </tr>
+                </apex:repeat>
+                </tbody>
+            </table>
+
+            <button class="close-btn" onclick="window.close(); return false;">Close</button>
+        </apex:form>
+    </div>
+    </body>
+</apex:page>
+
+
+
+
+

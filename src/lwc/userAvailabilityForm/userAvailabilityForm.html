@@ -1,0 +1,29 @@
+<!--
+ - Created by Adelchi on 02/07/2025.
+ -->
+
+<!-- User Availability Form -->
+<template>
+    <lightning-quick-action-panel header={greeting}>
+        <div class="slds-p-around_medium">
+            <div class="slds-grid slds-grid_align-center">
+<!--            <h2>Hello, {userName} 👋</h2>-->
+<!--            <p>Let your team know your current status.</p>-->
+
+            <!-- RADIO BUTTONS -->
+                <lightning-radio-group
+                        name="status"
+                        label="Set your status here"
+                        options={statusOptions}
+                        value={selectedStatus}
+                        onchange={handleStatusChange}
+                        type="button">
+                </lightning-radio-group>
+            </div>
+
+            <!-- no footer needed because you auto‑save on change -->
+        </div>
+    </lightning-quick-action-panel>
+</template>
+
+
