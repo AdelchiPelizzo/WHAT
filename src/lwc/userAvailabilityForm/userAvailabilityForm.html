@@ -7,8 +7,6 @@
     <lightning-quick-action-panel header={greeting}>
         <div class="slds-p-around_medium">
             <div class="slds-grid slds-grid_align-center">
-<!--            <h2>Hello, {userName} 👋</h2>-->
-<!--            <p>Let your team know your current status.</p>-->
 
             <!-- RADIO BUTTONS -->
                 <lightning-radio-group
@@ -19,6 +17,24 @@
                         onchange={handleStatusChange}
                         type="button">
                 </lightning-radio-group>
+            </div>
+            <div class="slds-m-top_medium">
+                <lightning-textarea
+                        label="About Me"
+                        value={aboutMe}
+                        onchange={handleAboutMeChange}
+                        placeholder="Tell your team something about you"
+                        class="aboutme-textarea">
+                </lightning-textarea>
+            </div>
+            <div class="slds-m-top_medium">
+                <lightning-button
+                        variant="brand"
+                        label="Save About Me"
+                        onclick={saveAboutMe}
+                        disabled={isSavingAboutMe}
+                        class="slds-m-top_small">
+                </lightning-button>
             </div>
 
             <!-- no footer needed because you auto‑save on change -->

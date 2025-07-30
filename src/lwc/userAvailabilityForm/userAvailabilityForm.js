@@ -2,18 +2,20 @@
  * EmployeeAvailability – Screen Quick Action
  * Shows a radio‑button picker and saves the user’s status immediately.
  */
-import { LightningElement, track, wire, api } from 'lwc';
-import { createRecord, updateRecord }         from 'lightning/uiRecordApi';
-import { CloseActionScreenEvent }             from 'lightning/actions';
-import { ShowToastEvent }                     from 'lightning/platformShowToastEvent';
+import { LightningElement, track, wire, api } 		from 'lwc';
+import { createRecord, updateRecord, getRecord }  from 'lightning/uiRecordApi';
+import { getObjectInfo, getPicklistValues }				from 'lightning/uiObjectInfoApi';
+import { CloseActionScreenEvent }        			    from 'lightning/actions';
+import { ShowToastEvent }                     		from 'lightning/platformShowToastEvent';
 
-import USER_ID                                from '@salesforce/user/Id';
-import getAvailabilityWithUser                from '@salesforce/apex/AvailabilityService.getAvailabilityWithUser';
+import USER_ID                                		from '@salesforce/user/Id';
+import ABOUTME_FIELD 															from '@salesforce/schema/User.AboutMe';
+import getAvailabilityWithUser           			    from '@salesforce/apex/AvailabilityService.getAvailabilityWithUser';
 
-import USER_AVAIL_OBJECT                      from '@salesforce/schema/User_Availability__c';
-import ID_FIELD                               from '@salesforce/schema/User_Availability__c.Id';
-import STATUS_FLD                             from '@salesforce/schema/User_Availability__c.Status__c';
-import USER_FLD                               from '@salesforce/schema/User_Availability__c.User__c';
+import USER_AVAIL_OBJECT                   			  from '@salesforce/schema/User_Availability__c';
+import ID_FIELD                         		      from '@salesforce/schema/User_Availability__c.Id';
+import STATUS_FLD                    			        from '@salesforce/schema/User_Availability__c.Status__c';
+import USER_FLD                          			    from '@salesforce/schema/User_Availability__c.User__c';
 
 export default class EmployeeAvailability extends LightningElement {
     /* ------------ reactive state ------------ */
@@ -24,12 +26,82 @@ export default class EmployeeAvailability extends LightningElement {
     @track isSaving   = false;
     @track saveError  = false;
 
+    @track statusOptions = [];
+
+    @track aboutMe = '';
+		@track isSavingAboutMe = false;
+
+		// Wire to get current AboutMe field for current user
+		@wire(getRecord, { recordId: USER_ID, fields: [ABOUTME_FIELD] })
+		wiredUser({ error, data }) {
+				if (data) {
+						this.aboutMe = data.fields.AboutMe.value;
+				} else if (error) {
+						console.error('Error loading AboutMe', error);
+				}
+		}
+
+		// Handle input change, keep local copy
+		handleAboutMeChange(event) {
+				this.aboutMe = event.target.value;
+		}
+
+		// Save updated AboutMe field on button click
+		async saveAboutMe() {
+				this.isSavingAboutMe = true;
+				const fields = {
+						Id: USER_ID,
+						AboutMe: this.aboutMe
+				};
+				try {
+						await updateRecord({ fields });
+						this.dispatchEvent(
+								new ShowToastEvent({
+										title: 'Success',
+										message: 'Your About Me has been saved.',
+										variant: 'success',
+								})
+						);
+				} catch (error) {
+						console.error('Error saving AboutMe', error);
+						this.dispatchEvent(
+								new ShowToastEvent({
+										title: 'Error',
+										message: error.body?.message || 'Failed to save About Me',
+										variant: 'error',
+										mode: 'sticky',
+								})
+						);
+				} finally {
+						this.isSavingAboutMe = false;
+				}
+		}
+
+    @wire(getObjectInfo, { objectApiName: USER_AVAIL_OBJECT })
+    objectInfo;
+
+    @wire(getPicklistValues, {
+        recordTypeId: '$objectInfo.data.defaultRecordTypeId',
+        fieldApiName: STATUS_FLD
+    })
+    wiredStatusOptions({ data, error }) {
+        if (data) {
+            this.statusOptions = data.values.map(entry => ({
+                label: entry.label,
+                value: entry.value
+            }));
+        } else if (error) {
+            console.error('Failed to load picklist values', error);
+        }
+    }
+
+
     /* ------------ radio‑button options ------------ */
-    statusOptions = [
-        { label: 'Active',   value: 'In' },
-        { label: 'Paused',   value: 'At Lunch' },
-        { label: 'Inactive', value: 'OOO' }
-    ];
+//    statusOptions = [
+//        { label: 'Active',   value: 'ACTIVE' },
+//        { label: 'Paused',   value: 'PAUSE' },
+//        { label: 'Inactive', value: 'INACTIVE' }
+//    ];
 
     /* ------------ load current availability ------------ */
     @wire(getAvailabilityWithUser)
@@ -37,9 +109,11 @@ export default class EmployeeAvailability extends LightningElement {
         if (data?.length) {
             const mine = data.find(w => w.userRecordId === USER_ID);
             if (mine) {
-                this.selectedStatus = mine.Status;
+//                this.selectedStatus = mine.Status;
                 this.userName       = mine.userFirstName;
                 this.availId        = mine.availabilityId ?? mine.Id ?? null;
+                // keep the current status only for display if you want:
+                this.lastStatus     = mine.Status;
             }
         } else if (error) {
             // eslint-disable-next-line no-console
@@ -75,6 +149,7 @@ export default class EmployeeAvailability extends LightningElement {
     /* ------------ radio change → save instantly ------------ */
     handleStatusChange(event) {
         this.selectedStatus = event.detail.value;
+        console.log("this.selectedStatus >>> ", this.selectedStatus);
         return this.save();                 // return promise so QA waits
     }
 

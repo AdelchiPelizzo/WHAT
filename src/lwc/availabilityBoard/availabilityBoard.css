@@ -17,6 +17,50 @@ table {
   overflow: hidden;
 }
 
+.team-filter {
+    display: inline-block;
+    padding: 0.2rem;
+    background: #1b96ff;
+    border-radius: 0.375rem;
+    box-shadow: 0 1px 3px rgba(61, 133, 198, 0.5);
+}
+
+.team-filter select {
+    width: 100%;
+    padding: 0.3rem;
+    font-size: 1.1rem;
+
+    border-radius: 0.375rem;
+    background-color: white;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Add these focus styles */
+.team-filter select:focus,
+.team-filter select:focus-visible {
+    border-color: #1b96ff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(31, 46, 184, 0.4);
+}
+
+.popout-link {
+    display: inline-flex;
+    align-items: center;
+    color: #1b96ff;
+    text-decoration: none;
+    font-weight: 600;
+    gap: 0.25rem;
+}
+
+.popout-link:hover {
+    text-decoration: underline;
+}
+
+.popout-text {
+    font-size: 1rem;
+}
+
+
 thead {
   background-color: #005fb2;
   color: white;
@@ -28,6 +72,7 @@ thead {
 th, td {
   padding: 0.75em 1em;
   text-align: left;
+  vertical-align: middle;
 }
 
 tbody tr:nth-child(odd) {
@@ -50,22 +95,52 @@ tbody tr:hover {
   user-select: none;
 }
 
-.status-badge.in {
-  background-color: #28a745; /* green */
+.status-word {
+  font-size: 1.5rem;
+  font-weight: 900;
 }
 
-.status-badge.at-lunch {
-  background-color: #ffc107; /* yellow */
-  color: #333;
+.active {
+  color: green !important;
 }
 
-.status-badge.ooo {
-  background-color: #dc3545; /* red */
+.inactive {
+  color: red !important;
 }
 
-.status-badge.out {
-  background-color: #dc3545;  /* red (or any colour you prefer) */
+.pause {
+  color: orange !important;
 }
 
+.username {
+    font-family: monospace;       /* or match .flap */
+    font-size: 1.2rem;            /* or match .flap */
+    letter-spacing: 0.05em;       /* optional: spacing consistency */
+    text-transform: uppercase;    /* to match flipboard caps */
+    font-weight: bold;            /* optional: visual emphasis */
+    margin-bottom: 0rem;       /* space between name and status */
+    margin-top: 0.3rem;       /* space between name and status */
+/*    display: block;               !* or flex for layout *!*/
+    text-align: left;           /* if needed */
+    vertical-align: middle;
+}
+
+.box{
+		display: flex;
+		align-items: center;               /* vertical centering */
+		max-width: 300px;
+		height: calc(1.5em * 3);           /* height = 3 lines of text */
+		padding: 0.5em;               /* Optional: space around text */
+}
+
+.about{
+    display: -webkit-box;
+    -webkit-line-clamp: 3;           /* max number of lines */
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.5em;
+    max-height: calc(1.5em * 3);     /* allow less if short text */       /* Fixed height to match max lines */    /* Match line count */ /* match line height × number of lines */
+}
 
 /* Add more status colors as needed */

@@ -1,396 +1,162 @@
-<!--
- - Created by adpel on 03/07/2025.
- -->
-
-<apex:page controller="adelwhat.AvailabilityService" showHeader="false" sidebar="false"  cache="false">
-
-        <!-- Built‑in CometD -->
-    <!-- load UMD build, NOT module -->
+<apex:page controller="adelwhat.AvailabilityService" showHeader="false" sidebar="false" cache="false">
+    <apex:slds />
+    <!-- CometD Scripts -->
     <apex:includeScript value="{!URLFOR($Resource.cometd)}" />
     <apex:includeScript value="{!URLFOR($Resource.ackExtension)}" />
     <apex:includeScript value="{!URLFOR($Resource.replayExtension)}" />
+    <head>
+        <link rel="stylesheet" href="https://unpkg.com/@salesforce-ux/design-system@latest/assets/styles/salesforce-lightning-design-system.min.css" />
+    </head>
 
-
-
-
-    <!--    <apex:includeScript value="/cometd/61.0/cometd.min.js"/>-->
+    <apex:stylesheet value="{!URLFOR($Resource.globalBoardStyles)}" />
 
     <script>
-    document.addEventListener('DOMContentLoaded', initCometD);
 
-    function initCometD() {
-        const sessionId = "{!$Api.Session_ID}";
-        console.log('sessionId >>', sessionId);
+        var cometd = new org.cometd.CometD();
 
-        // ─── Feature‑detect CometD ────────────────────────────────────────────────
-        if (!window.org?.cometd?.CometD) {
-            console.error('CometD client not loaded or wrong version');
-            return;                 // bail out early
-        }
-        console.log('CometD library found:', window.org.cometd.CometD);
-
-        // ─── Single shared instance ─────────────────────────────────────────────
-        const cometd = new org.cometd.CometD();
-        window.cometd = cometd;     // expose globally if other scripts need it
-
-        cometd.configure({
-            url: `${window.location.protocol}//${window.location.host}/cometd/61.0/`,
-            requestHeaders: { Authorization: `OAuth ${sessionId}` },
+        function initCometD() {
+            cometd.configure({
+                url: window.location.protocol + '//' + window.location.hostname + '/cometd/54.0/',
+                requestHeaders: { Authorization: 'OAuth {!$Api.Session_ID}' },
             appendMessageTypeToURL: false
         });
-        cometd.websocketEnabled = false;   // fallback to long‑poll
 
-        // ─── Handshake & subscriptions ──────────────────────────────────────────
-        cometd.handshake((hs) => {
-            console.log('Handshake response:', hs);
-            if (!hs.successful) {
-                console.error('Handshake failed', hs);
-                return;
-            }
-            console.log('Handshake successful');
+        cometd.websocketEnabled = false;
 
-            cometd.addListener('/meta/subscribe', (msg) => {
-                console.log('Subscribe response:', msg);
-                if (!msg.successful) {
-                    console.error('Subscription failed:', msg.error);
-                }
-            });
+        cometd.handshake(function (handshakeReply) {
+            if (handshakeReply.successful) {
+                console.log('CometD handshake successful');
 
-            cometd.subscribe(
-                '/data/adelwhat__User_Availability__ChangeEvent',
-                -1,
-                (msg) => {
-                    console.log('CDC event in VF', msg);
-                    refreshBoard(msg.data.payload);
-                }
-            );
-        });
-    }
-    /* ------------- helpers ------------- */
+                cometd.subscribe('/data/adelwhat__User_Availability__ChangeEvent', function (message) {
+                    console.log('CDC event received:', message);
+                    var payload = message.data.payload;
+                    var changeHeader = payload.ChangeEventHeader;
+                    var recordIds = changeHeader.recordIds;
 
-    // Find an existing <tr> whose 4th cell (index 3) == userId
-    function findRowByUserId(userId) {
-        const rows = document.querySelectorAll('#board tbody tr');
-        return Array.from(rows).find(
-            r => r.cells[3] && r.cells[3].textContent.trim() === userId
-        );
-    }
-    /* ---------- helpers ---------- */
+                    if (!recordIds || recordIds.length === 0) {
+                        console.warn('No recordIds found in ChangeEventHeader');
+                        return;
+                    }
 
-    // Convert status text to the CSS class you use for the badge colour
-    function badgeClassFor(status) {
-        if (!status) return '';
-        const s = status.toLowerCase();
-        if (s === 'in')         return 'in';
-        if (s === 'at lunch')   return 'at-lunch';
-        if (s === 'ooo' || s === 'out' || s === 'out of office')
-            return 'ooo';
-        return '';
-    }
-     /* ----------------------------------------------------------*/
-    const avail2User = new Map();        // key = availabilityId  →  value = userId
+                    var availabilityId = recordIds[0];
+                    var newStatus = payload.adelwhat__Status__c;
 
-    // Live‑patch or insert a row when CDC fires
-    function refreshBoard(payload) {
-        const { recordIds = [], changeType } = payload.ChangeEventHeader;
+                    console.log('Updating availabilityId:', availabilityId, 'to status:', newStatus);
 
-        if (!recordIds.length) {
-            console.warn('No record Ids found in CDC event', payload);
-            return;
-        }
+                    var row = document.querySelector('tr[data-availability-id="' + availabilityId + '"]');
 
-        recordIds.forEach(availabilityRecordId => {
-            switch (changeType) {
-                case 'DELETE':
-                case 'GAP_DELETE': {
-                    // Remove row immediately for delete events
-                    const row = document.querySelector(`tr[data-availability-id="${availabilityRecordId}"]`);
                     if (row) {
-                        const userId = row.dataset.userId;
-                        row.remove();
-                        avail2User.delete(availabilityRecordId);
-                        console.log(`Removed row for availabilityId ${availabilityRecordId} (CDC delete event)`);
-                    } else {
-                        console.warn(`No row found for availabilityId ${availabilityRecordId}`);
-                    }
-                    break;
-                }
-                case 'CREATE':
-                case 'UNDELETE': {
-                    console.log('CREATE/UNDELETE payload:', payload);
-                    // Always fetch full record from Apex for create/un-delete events
-                    fetchAndUpdateRow(availabilityRecordId);
-                    break;
-                }
-                case 'UPDATE': {
-                    // Try patching row from payload, fallback to Apex fetch if not possible
-                    if (!patchRowFromPayload(availabilityRecordId, payload)) {
-                        fetchAndUpdateRow(availabilityRecordId);
-                    }
-                    break;
-                }
-                default:
-                    console.warn('Unhandled changeType:', changeType);
-            }
-        });
-    }
+                        var badge = row.querySelector('.status-badge');
 
-    function patchRowFromPayload(availabilityRecordId, payload) {
-        const row = document.querySelector(`tr[data-availability-id="${availabilityRecordId}"]`);
-        if (!row) return false; // No existing row to patch
+                        if (badge) {
+                            badge.className = 'status-badge';
 
-        if (payload.adelwhat__Status__c) {
-            const status = payload.adelwhat__Status__c;
-            row.cells[2].innerHTML = `<span class="status-badge ${badgeClassFor(status)}">${status}</span>`;
-            return true;
-        }
+                            switch (newStatus) {
+                                case 'ACTIVE':
+                                    badge.classList.add('in');
+                                    break;
+                                case 'INACTIVE':
+                                    badge.classList.add('out');
+                                    break;
+                                case 'PAUSE':
+                                    badge.classList.add('at-lunch');
+                                    break;
+                                case 'OOO':
+                                    badge.classList.add('ooo');
+                                    break;
+                                default:
+                                    break;
+                            }
 
-        // Add more patchable fields here if needed
+                            var flipboard = badge.querySelector('.flipboard');
+                            if (flipboard) {
+                                flipboard.innerHTML = '';
+                                [...newStatus].forEach((letter, index) => {
+                                    const cell = document.createElement('div');
+                                    cell.className = 'flip-cell';
 
-        return false; // Nothing patched, fallback needed
-    }
+                                    const span = document.createElement('span');
+                                    // Set the previous letter, or fallback to letter if first load
+                                    span.textContent = letter;
 
-    function fetchAndUpdateRow(availabilityRecordId) {
-        Visualforce.remoting.Manager.invokeAction(
-            '{!$RemoteAction.AvailabilityService.getAvailabilityById}',
-            availabilityRecordId,
-            function (result, event) {
-                console.log('Remoting callback fired for', availabilityRecordId, 'event:', event, 'result:', result);
+                                    cell.appendChild(span);
+                                    flipboard.appendChild(cell);
 
-                if (!event.status) {
-                    if (event.message?.includes('NoDataFound')) {
-                        // Record deleted before fetch completed — remove row
-                        const row = document.querySelector(`tr[data-availability-id="${availabilityRecordId}"]`);
-                        if (row) {
-                            row.remove();
-                            avail2User.delete(availabilityRecordId);
-                            console.log(`Removed row for availabilityId ${availabilityRecordId} (exception fallback)`);
+                                    setTimeout(() => {
+                                        void cell.offsetWidth;
+
+                                        cell.classList.add('flipping');
+
+                                        setTimeout(() => {
+                                            span.textContent = letter; // Confirm new letter post-flip
+                                            cell.classList.remove('flipping');
+                                        }, 400);
+                                    }, index * 100);
+                                });
+                            } else {
+                                console.warn('No flipboard element found inside badge');
+                            }
                         }
                     } else {
-                        console.error('Remoting error:', event.message || event.type);
+                        console.warn('No table row found for availabilityId:', availabilityId);
                     }
-                    return;
-                }
-
-                if (result === null) {
-                    // Record not found — remove row if present
-                    const row = document.querySelector(`tr[data-availability-id="${availabilityRecordId}"]`);
-                    if (row) {
-                        row.remove();
-                        avail2User.delete(availabilityRecordId);
-                        console.log(`Removed row for availabilityId ${availabilityRecordId} (null result)`);
-                    }
-                    return;
-                }
-
-//                const userId = result.adelwhat__User__c;
-//                if (!userId) {
-//                    console.warn('Fetched record missing user Id', result);
-//                    return;
-//                }
-
-                const userId  = result.userRecordId;      // map correctly
-                const first   = result.userFirstName || '';
-                const last    = result.userLastName  || '';
-                const status  = result.Status        || '';   // uppercase S in your wrapper
-                // availabilityRecordId is the same variable you already have
-
-                updateRow({
-                  availabilityRecordId,
-                  userId,
-                  first,
-                  last,
-                  status
                 });
+            } else {
+                console.error('CometD handshake failed');
             }
-        );
+        });
     }
-
-    function updateRow({ availabilityRecordId, userId, first, last, status }) {
-        const tbody = document.querySelector('#board tbody');
-        if (!tbody) return;
-
-        avail2User.set(availabilityRecordId, userId);
-
-        let row = document.querySelector(`tr[data-user-id="${userId}"]`);
-        const badge = `<span class="status-badge ${badgeClassFor(status)}">${status}</span>`;
-
-        if (row) {
-            row.cells[2].innerHTML = badge;
-            row.dataset.availabilityId = availabilityRecordId; // keep dataset in sync
-        } else {
-            console.log('creating row');
-            row = document.createElement('tr');
-            row.dataset.userId = userId;
-            row.dataset.availabilityId = availabilityRecordId;
-            row.innerHTML = `
-                <td>${first}</td>
-                <td>${last}</td>
-                <td>${badge}</td>
-                <td>${userId}</td>`;
-            tbody.appendChild(row);
-        }
-    }
+    document.addEventListener('DOMContentLoaded', function () {
+        initCometD();
+    });
     </script>
-    <style>
-        html, body {
-          height: 100%;
-          margin: 0;
-        }
 
-        body {
-          display: flex;
-          justify-content: center;  /* horizontal centering */
-          align-items: center;      /* vertical centering */
-          font-family: "Salesforce Sans", Arial, sans-serif;
-          background-color: #f9fafb;
-          color: #333;
-          overflow: auto;
-          padding: 20px;
-        }
-
-        .board {
-            max-width: 900px;
-            margin: 0 auto;
-            font-family: "Salesforce Sans", Arial, sans-serif;
-            font-size: 1rem;
-            color: #333;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        thead {
-            background-color: #005fb2;
-            color: white;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            font-weight: 600;
-        }
-
-        th, td {
-            padding: 0.75em 1em;
-            text-align: left;
-        }
-
-        tbody tr:nth-child(odd) {
-            background-color: #f9f9f9;
-        }
-
-        tbody tr:hover {
-            background-color: #d6e9ff;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        .status-badge {
-            padding: 0.25em 0.7em;
-            border-radius: 9999px;
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: white;
-            display: inline-block;
-            user-select: none;
-        }
-
-        .status-badge.in {
-            background-color: #28a745; /* green */
-        }
-
-                /* ✴︎ “Out” – red  (add whichever selector you need) */
-        .status-badge.out,
-        .status-badge.status-out {
-            background: #dc3545;
-        }
-
-        .status-badge.at-lunch {
-            background-color: #ffc107; /* yellow */
-            color: #333;
-        }
-
-        .status-badge.ooo {
-            background-color: #dc3545; /* red */
-        }
-
-        button.close-btn {
-            margin: 15px 0;
-            padding: 8px 16px;
-            background-color: #3498db;
-            border: none;
-            border-radius: 4px;
-            color: white;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        button.close-btn:hover {
-            background-color: #2980b9;
-        }
-
-        .outer {
-            max-width: 900px;
-            width: 100%;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
-            padding: 20px;          /* was inline */
-            margin: 0 auto;         /* centres in flex body */
-        }
-        .padded-form {             /* replaces inline padding */
-            padding: 25px;
-        }
-    </style>
     <body>
-    <div id="board" class="board outer">   <!-- inline style removed -->
-        <apex:form styleClass="padded-form">
-            <!-- ✂️ removed inner <div class="board"> -->
+    <div class="slds-scope">
+        <div class="" id="board">
+            <apex:form>
+                <h2 class="slds-text-heading_medium">Team Availability Board</h2>
+                <div>
+                    <table >
+                        <thead >
+                        <tr >
+                            <th style="padding-left: 20px;" >First Name</th>
+                            <th style="padding-left: 20px;">Last Name</th>
+                            <th style="padding-left: 20px;">Status</th>
+                            <th style="padding-left: 20px;">User Id</th>
+                        </tr>
+                        </thead>
+                        <tbody >
+                            <apex:repeat value="{!availabilityList}" var="a">
+                                <tr id="row-{!a.userRecordId}" class="slds-form-element"
+                                    data-user-id="{!a.userRecordId}"
+                                    data-availability-id="{!a.availabilityId}">
+                                    <td class="slds-text-heading_medium" style="padding-left: 20px;">{!a.userFirstName}</td>
+                                    <td class="slds-text-heading_medium" style="padding-left: 20px;">{!a.userLastName}</td>
+                                    <td style="padding-left: 20px;">
+                                        <span class="status-badge
+                                            {!IF(a.Status = 'ACTIVE', 'in', '')}
+                                            {!IF(a.Status = 'INACTIVE', 'out', '')}
+                                            {!IF(a.Status = 'PAUSE', 'at-lunch', '')}
+                                            {!IF(a.Status = 'OOO', 'ooo', '')}">
 
-            <h2>Team Availability</h2>
-
-            <table>
-                <thead>
-                <tr>
-                    <th scope="col">First Name</th>
-                    <th scope="col">Last Name</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">User Id</th>
-                </tr>
-                </thead>
-                <tbody>
-                <apex:repeat value="{!availabilityList}" var="a">
-                    <tr id="row-{!a.userRecordId}"
-                        data-user-id="{!a.userRecordId}"
-                        data-availability-id="{!a.availabilityId}">
-                        <td><apex:outputText value="{!a.userFirstName}" escape="true"/></td>
-                        <td><apex:outputText value="{!a.userLastName}"  escape="true"/></td>
-                        <td>
-                                <span class="status-badge
-                                     {!IF(a.Status = 'In',        'in', '')}
-                                     {!IF(a.Status = 'Out',       'out', '')}
-                                     {!IF(a.Status = 'At Lunch',  'at-lunch', '')}
-                                     {!IF(a.Status = 'OOO',       'ooo', '')}">
-                                     {!a.Status}
-                                </span>
-                        </td>
-                        <td>{!a.userRecordId}</td>
-                    </tr>
-                </apex:repeat>
-                </tbody>
-            </table>
-
-            <button class="close-btn" onclick="window.close(); return false;">Close</button>
-        </apex:form>
+                                            <!-- Flipboard Style Status Rendering -->
+                                            <div class="flipboard">
+                                                <apex:repeat value="{!a.statusLetters}" var="letter">
+                                                    <div class="flip-cell">{!letter}</div>
+                                                </apex:repeat>
+                                            </div>
+                                        </span>
+                                    </td>
+                                    <td class="slds-text-heading_medium" style="padding-left: 20px;">{!a.userRecordId}</td>
+                                </tr>
+                        </apex:repeat>
+                        </tbody>
+                    </table>
+                </div>
+                <button class="close-btn" onclick="window.close(); return false;">Close</button>
+            </apex:form>
+        </div>
     </div>
     </body>
 </apex:page>
-
-
-
-
-

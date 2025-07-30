@@ -4,74 +4,100 @@
 
 <!-- Availability Board -->
 <template>
-    <!-- ░░░ Pop-out Mode: Show ONLY the board ░░░ -->
-    <template if:true={isPopout}>
-        <div class="board">
-            <table>
-                <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Status</th>
-                    <th>From</th>
-                    <th>Until</th>
-                    <th>Next Avail.</th>
-                    <th>Notes</th>
-                </tr>
-                </thead>
-                <tbody>
-                <template for:each={processedRows} for:item="row">
-                    <tr key={row.userRecordId}>
-                        <td>{row.userFirstName} {row.userLastName}</td>
-                        <td>
-                            <span class={row.statusClass}>{row.Status}</span>
-                        </td>
-                        <td>{row.From}</td>
-                        <td>{row.Until}</td>
-                        <td>{row.NextAvail}</td>
-                        <td>{row.Notes}</td>
-                    </tr>
-                </template>
-                </tbody>
-            </table>
-        </div>
+    <template if:false={rows}>
+        <p>⏳ Loading team availability...</p>
     </template>
-
     <!-- ░░░ Normal Mode: Full UI ░░░ -->
-    <template if:false={isPopout}>
+    <template if:true={rows}>
         <div class="board">
+            <div class="slds-m-around_large">
+                <label class="slds-text-heading_medium slds-m-right_large slds-text-color_inverse" for="teamFilter">Select Team</label>
+                <div class="team-filter">
+                    <select id="teamFilter" onchange={handleTeamChange} value={selectedTeamId}>
+                        <option value="">-- All --</option>
+                        <template for:each={teamOptions} for:item="team">
+                            <option key={team.value} value={team.value}>{team.label}</option>
+                        </template>
+                    </select>
+                </div>
+            </div>
             <table>
                 <thead>
                 <tr>
+                    <th> </th>
                     <th>Name</th>
                     <th>Status</th>
-                    <th>From</th>
-                    <th>Until</th>
-                    <th>Next Avail.</th>
                     <th>Notes</th>
                 </tr>
                 </thead>
                 <tbody>
-                <template for:each={processedRows} for:item="row">
-                    <tr key={row.userRecordId}>
-                        <td>{row.userFirstName} {row.userLastName}</td>
-                        <td>
-                            <span class={row.statusClass}>{row.Status}</span>
-                        </td>
-                        <td>{row.From}</td>
-                        <td>{row.Until}</td>
-                        <td>{row.NextAvail}</td>
-                        <td>{row.Notes}</td>
-                    </tr>
+                <template if:true={rows}>
+                    <template for:each={processedRows} for:item="row">
+                        <tr key={row.userRecordId}>
+                            <td>
+                                <template if:true={row.photo}>
+                                    <div style="height: 50px; width: 50px; border-radius: 50%; overflow: hidden;">
+                                        <img src={row.photo} alt="User Photo" style="height: 100%; width: 100%; object-fit: cover;" />
+                                    </div>
+
+                                </template>
+                            </td>
+                            <td class="username">{row.userFirstName} {row.userLastName}</td>
+                            <td>
+<!--                                <c-status-blinker status={row.status} status-label={row.statusLabel}></c-status-blinker>-->
+                                <c-status-blinker
+                                        key={row.rowKey}
+                                        status={row.status}
+                                        status-label={row.statusLabel}
+                                        class={row.statusClass}
+                                ></c-status-blinker>
+                            </td>
+                            <td class="box">
+                                <div class="about">
+                                    {row.aboutMe}
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </template>
+                <template if:false={availabilityRecords}>
+                    <p>No availability records found.</p>
                 </template>
                 </tbody>
             </table>
+            <div class="slds-m-around_x-large">
+                <a href="#" onclick={openPopoutFiltered} class="popout-link">
+                    <lightning-icon icon-name="utility:new_window" size="small" alternative-text="Pop out board"></lightning-icon>
+                    <span class="popout-text">Pop out board</span>
+                </a>
+            </div>
+            <div class="slds-m-around_x-large">
+                <a href="#" onclick={openPicklistSetup} class="popout-link">
+                    <lightning-icon icon-name="utility:picklist_type" size="small" alternative-text="Edit Statuses"></lightning-icon>
+                    <span class="popout-text">Change Status Values</span>
+                </a>
+            </div>
         </div>
+<!--        <c-flip-board text={statusText} label="Current Status">-->
+
+
+<!--        </c-flip-board>-->
+
+
+<!--        <button onclick={markIn}>Mark In</button>-->
+<!--        <button onclick={markOut}>Mark Out</button>-->
+
+<!--        <c-flip-board-->
+<!--                text="IN"-->
+<!--                label="Status: In Office"-->
+<!--                character-set="INOUTBRK•🙂😎">-->
+<!--        </c-flip-board>-->
+
 
         <!-- Pop-out button -->
-        <lightning-button
-                label="Pop Out Availability Board"
-                onclick={openPopout}>
-        </lightning-button>
+
+<!--        <lightning-button label="Edit Status Values" onclick={openPicklistSetup}></lightning-button>-->
+
     </template>
 </template>
 

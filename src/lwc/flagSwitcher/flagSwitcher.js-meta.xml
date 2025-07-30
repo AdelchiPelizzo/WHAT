@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>64.0</apiVersion>
+    <description>Flag Switcher</description>
+    <isExposed>true</isExposed>
+    <masterLabel>Flag Switcher</masterLabel>
+    <targets>
+        <target>lightning__Tab</target>
+        <!-- Expose on Record Page -->
+        <target>lightning__RecordPage</target>
+
+        <!-- Expose on App Page -->
+        <target>lightning__AppPage</target>
+
+        <!-- Expose on Home Page -->
+        <target>lightning__HomePage</target>
+
+        <!-- Expose as Utility Bar Item -->
+        <target>lightning__UtilityBar</target>
+    </targets>
+</LightningComponentBundle>

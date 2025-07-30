@@ -1,0 +1,14 @@
+<!--
+ - Created by adpel on 08/07/2025.
+ -->
+
+<!-- Flip Board -->
+<!-- flipboard.html -->
+<template>
+    <div class={statusClass} aria-label={label}>
+        <template for:each={characters} for:item="item" for:index="i">
+            <span key={id} class="flap" data-char={item.char}>{item.char}</span>
+        </template>
+    </div>
+</template>
+

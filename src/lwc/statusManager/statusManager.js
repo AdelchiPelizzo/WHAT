@@ -1,9 +1,11 @@
 /**
  * Created by adpel on 08/07/2025.
  */
-import { LightningElement, wire, track } from 'lwc';
+import { LightningElement, wire, track, api } from 'lwc';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { refreshApex } from '@salesforce/apex';
+import { updateRecord } from 'lightning/uiRecordApi';
+
 
 import getStatuses   from '@salesforce/apex/AvailabilityService.getStatuses';
 import upsertStatus  from '@salesforce/apex/AvailabilityService.upsertStatus';
@@ -12,58 +14,96 @@ export default class StatusManager extends LightningElement {
     // ▸ datatable column‑set (editable)
     columns = [
         { label: 'Status', fieldName: 'adelwhat__Display_Label__c', type: 'text', editable: true },
-        { label: 'Type', fieldName: 'adelwhat__Status_Code__c', type: 'text', editable: true },
-        { label: 'Style', fieldName: 'adelwhat__Style__c', type: 'text',  editable: true }
+        { label: 'Type', fieldName: 'adelwhat__Status_Code__c', type: 'text' }
     ];
 
-    @track draftValues = [];      // holds dirty rows while user edits
-    @track records     = [];      // array rendered in the table
+    @track records ;      // array rendered in the table
     wiredResponse;                // holds the @wire result for refreshApex
-
+		@api recordId;
+		draftValues = [];
     /** ─────────────────────────────────────────────────────────────
      * READ  — cacheable Apex call via @wire
      * ──────────────────────────────────────────────────────────── */
-    @wire(getStatuses)
-    wiredStatuses(result) {
-        this.wiredResponse = result || {};
+		@track error;
 
-        const { data, error } = result || {};
-        if (data) {
-            console.log('>>> !! results >> ',data);
-            this.records = data;
-            this.error = undefined;
-        } else if (error) {
-            this.records = [];
-            this.error = error;
-        }
-    }
+		@wire(getStatuses)
+		wiredStatuses(result) {
+				this.wiredResponse = result;
+    		console.log(result);
+
+				if (result.data) {
+						this.records = result.data;
+						this.error = undefined;
+				} else if (result.error) {
+						this.records = [];
+						this.error = result.error;
+				}
+		}
+
+
 
 
     /** ─────────────────────────────────────────────────────────────
      * SAVE — fires when the datatable’s “Save” button is clicked
      * event.detail.draftValues is an array of modified rows
      * ──────────────────────────────────────────────────────────── */
-    async handleSave(event) {
-        const updatedRows = event.detail.draftValues;   // [{MasterLabel:'In', …}, …]
+		async handleSave(event) {
+    		console.log(event.detail);
+				// Convert datatable draft values into record objects
+				const records = event.detail.draftValues.map(draft => {
+						return {
+								fields: {
+										Id: draft.Id,  // required
+										adelwhat__Display_Label__c: draft.adelwhat__Display_Label__c  // only allow editing the label
+								}
+						};
+				});
 
-        // Call Apex (imperative) — pass JSON string or List<Map> as your method expects
-        try {
-            await upsertStatus({ payload: JSON.stringify(updatedRows) });
+				// Clear all datatable draft values
+				this.draftValues = [];
 
-            this.showToast('Success', 'Status metadata updated.', 'success');
-            this.draftValues = [];          // clear table draft state
+				try {
+						// Update all records in parallel thanks to the UI API
+						const recordUpdatePromises = records.map((record) => updateRecord(record));
+						await Promise.all(recordUpdatePromises);
+						this.dispatchEvent(
+								new ShowToastEvent({
+										title: "Success",
+										message: "Status updated",
+										variant: "success"
+								})
+						);
 
-            // refresh the @wire to pull the latest records from server cache
-            await refreshApex(this.wiredResponse);
+						// Display fresh data in the datatable
+						await refreshApex(this.wiredResponse);
+				} catch (error) {
+						console.error('⚠️ Full error object:', JSON.stringify(error, null, 2));
 
-        } catch (err) {
-            const msg = (err.body && err.body.message) ? err.body.message : err.message;
-            this.showToast('Error updating metadata', msg, 'error');
-        }
-    }
+						let message = 'Unknown error occurred';
 
-    /** helper to fire Lightning toast */
-    showToast(title, message, variant) {
-        this.dispatchEvent(new ShowToastEvent({ title, message, variant }));
-    }
+						try {
+								if (Array.isArray(error.body)) {
+										message = error.body.map(e => e.message).join(', ');
+								} else if (error.body && typeof error.body.message === 'string') {
+										message = error.body.message;
+								} else if (typeof error.message === 'string') {
+										message = error.message;
+								} else {
+										message = JSON.stringify(error);
+								}
+						} catch (parseError) {
+								message = 'An unexpected error occurred, and the message could not be parsed.';
+						}
+
+						this.dispatchEvent(
+								new ShowToastEvent({
+										title: 'Error updating records',
+										message,
+										variant: 'error'
+								})
+						);
+				}
+
+
+		}
 }

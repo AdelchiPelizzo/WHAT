@@ -1,0 +1,43 @@
+/**
+ * Created by adpel on 13/07/2025.
+ */
+.status-container {
+    display: flex;
+    justify-content: left;
+    align-items: left;
+    height: 40px;
+}
+
+.status-word {
+	white-space: nowrap;
+  font-size: 1.5rem;
+  font-weight: 900;
+}
+
+.blinking {
+  animation: blinkShowHide 0.5s steps(1, start) infinite;
+}
+
+.active {
+  color: green !important;
+}
+
+.inactive {
+  color: red !important;
+}
+
+.pause {
+  color: orange !important;
+}
+
+@keyframes blinkShowHide {
+  0%, 50% {
+    opacity: 1;  /* visible */
+  }
+  51%, 100% {
+    opacity: 0;  /* hidden */
+  }
+}
+
+
+

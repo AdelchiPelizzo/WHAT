@@ -5,88 +5,311 @@
 global with sharing class AvailabilityService {
 
     public static List<AvailabilityWrapper> availabilityList { get; set; }
+    public String teamId { get; set; }
+    public String teamName { get; set; }
 
     public AvailabilityService() {
         availabilityList = new List<AvailabilityWrapper>();
-        loadAvailability();
+        teamId = ApexPages.currentPage().getParameters().get('teamId');
+        loadAvailability(teamId);
+        teamName = [SELECT Name FROM adelwhat__Team__c WHERE Id =: teamId LIMIT 1].Name;
     }
 
-    @RemoteAction
-    global static AvailabilityWrapper getAvailabilityById(Id availabilityId) {
-
-        /*— query returns 0 or 1 rows instead of throwing —*/
-        List<adelwhat__User_Availability__c> rows = [
-                SELECT  Id,
-                        adelwhat__Status__c,
-                        adelwhat__User__c,
-                        adelwhat__User__r.FirstName,
-                        adelwhat__User__r.LastName
-                FROM    adelwhat__User_Availability__c
-                WHERE   Id = :availabilityId
-                LIMIT   1
-                /* ALL ROWS            // ←‑‑ keep if you want Recycle‑Bin visibility */
-        ];
-
-        if (rows.isEmpty()) {
-            return null;                     // JS treats null ⇒ DELETE
-        }
-
-        adelwhat__User_Availability__c ava = rows[0];
-        return new AvailabilityWrapper(
-                ava.adelwhat__User__r.FirstName,
-                ava.adelwhat__User__r.LastName,
-                ava.adelwhat__User__c,           // use the lookup field itself
-                ava.adelwhat__Status__c,
-                ava.Id
-        );
+    @AuraEnabled(cacheable=true)
+    public static List<adelwhat__Team__c> getTeamOptions() {
+        return [SELECT Id, Name FROM adelwhat__Team__c ORDER BY Name];
     }
-
 
     // Load availability data from the custom object
-    private void loadAvailability() {
+    private void loadAvailability(String teamId) {
+        System.debug('Loading Filtered Data');
         List<adelwhat__User_Availability__c> avaList = [
-                SELECT Id, adelwhat__Status__c, adelwhat__User__r.FirstName, adelwhat__User__r.LastName, adelwhat__User__r.Id
+                SELECT Id, adelwhat__Status__c, adelwhat__User__r.FirstName, adelwhat__User__r.LastName, adelwhat__User__r.SmallPhotoUrl, adelwhat__User__r.Id, adelwhat__Team__r.Name
                 FROM adelwhat__User_Availability__c
+                WHERE adelwhat__Team__c =: teamId
         ];
 
         for(adelwhat__User_Availability__c ava : avaList){
             availabilityList.add(new AvailabilityWrapper(
                     ava.adelwhat__User__r.FirstName,
                     ava.adelwhat__User__r.LastName,
+                    ava.adelwhat__User__r.SmallPhotoUrl,
                     ava.adelwhat__User__r.Id,
                     ava.adelwhat__Status__c,
-                    ava.Id
+                    ava.Id,
+                    ava.adelWhat__Team__r.Name
             ));
         }
     }
+
+    @AuraEnabled(cacheable=true)
+    public static List<AvailabilityWrapper> getAvailabilityByTeamId(String teamId){
+        System.debug('=== getAvailabilityByTeamId ===');
+        System.debug('=== TeamId ===  '+teamId);
+        List<AvailabilityWrapper> wrapList = new List<AvailabilityWrapper>();
+
+        List<adelwhat__User_Availability__c> avaList;
+        if(String.isBlank(teamId)) {
+            // No filter: get all
+            avaList = [
+                    SELECT Id,
+                            adelwhat__Status__c,
+                            adelwhat__User__r.FirstName,
+                            adelwhat__User__r.LastName,
+                            adelwhat__User__r.SmallPhotoUrl,
+                            adelwhat__User__r.Id,
+                            adelwhat__Team__r.Name
+                    FROM adelwhat__User_Availability__c
+            ];
+        } else {
+            // Filter by team
+            avaList = [
+                    SELECT Id,
+                            adelwhat__Status__c,
+                            adelwhat__User__r.FirstName,
+                            adelwhat__User__r.LastName,
+                            adelwhat__User__r.SmallPhotoUrl,
+                            adelwhat__User__r.Id,
+                            adelwhat__Team__r.Name
+                    FROM adelwhat__User_Availability__c
+                    WHERE adelwhat__Team__c = :teamId
+            ];
+        }
+
+        for(adelwhat__User_Availability__c ava : avaList){
+            wrapList.add(new AvailabilityWrapper(
+                    ava.adelwhat__User__r.FirstName,
+                    ava.adelwhat__User__r.LastName,
+                    ava.adelwhat__User__r.SmallPhotoUrl,
+                    ava.adelwhat__User__r.Id,
+                    ava.adelwhat__Status__c,
+                    ava.Id,
+                    ava.adelwhat__Team__r.Name
+            ));
+        }
+
+        availabilityList = wrapList;
+        System.debug(availabilityList.size());
+        System.debug(availabilityList);
+        return wrapList;
+    }
+
+    @AuraEnabled (cacheable=true)
+    public static List<AvailabilityWrapper> getAvailabilityWithUser2() {
+        System.debug('=== entered getAvailabilityWithUser ===');
+
+        // Map picklist values to labels
+        Map<String, String> statusLabelMap = new Map<String, String>();
+        Schema.DescribeFieldResult dfr = adelwhat__User_Availability__c.adelwhat__Status__c.getDescribe();
+        for (Schema.PicklistEntry entry : dfr.getPicklistValues()) {
+            statusLabelMap.put(entry.getValue(), entry.getLabel());
+        }
+
+        List<AvailabilityWrapper> wrapList = new List<AvailabilityWrapper>();
+
+        List<adelwhat__User_Availability__c> avaList = [
+                SELECT Id,
+                        adelwhat__Status__c,
+                        adelwhat__User__r.FirstName,
+                        adelwhat__User__r.LastName,
+                        adelwhat__User__r.SmallPhotoUrl,
+                        adelwhat__User__r.Id,
+                        adelwhat__Team__r.Name
+                FROM adelwhat__User_Availability__c
+        ];
+
+        if (!avaList.isEmpty()) {
+            for (adelwhat__User_Availability__c ava : avaList) {
+                String statusLabel = statusLabelMap.get(ava.adelwhat__Status__c);
+                wrapList.add(new AvailabilityWrapper(
+                        ava.adelwhat__User__r.FirstName,
+                        ava.adelwhat__User__r.LastName,
+                        ava.adelwhat__User__r.SmallPhotoUrl,
+                        ava.adelwhat__User__r.Id,
+                        statusLabel, // use label instead of value
+                        ava.Id,
+                        ava.adelwhat__Team__r.Name
+                ));
+            }
+        }
+
+        availabilityList = wrapList;
+        return wrapList;
+    }
+
 
     @AuraEnabled (cacheable=true)
     public static List<AvailabilityWrapper> getAvailabilityWithUser(){
         System.debug('=== entered getAvailabilityWithUser ===');
         List<AvailabilityWrapper> wrapList = new List<AvailabilityWrapper>();
-        List<adelwhat__User_Availability__c> avaList = [ SELECT Id, adelwhat__Status__c, adelwhat__User__r.FirstName, adelwhat__User__r.LastName, adelwhat__User__r.Id FROM adelwhat__User_Availability__c];
+        List<adelwhat__User_Availability__c> avaList = [
+                SELECT Id,
+                adelwhat__Status__c,
+                adelwhat__User__r.FirstName,
+                adelwhat__User__r.LastName,
+                adelwhat__User__r.SmallPhotoUrl,
+                adelwhat__User__r.Id,
+                adelwhat__Team__r.Name
+                FROM adelwhat__User_Availability__c];
         if(!avaList.isEmpty()){
             for(adelwhat__User_Availability__c ava : avaList){
-                wrapList.add(new AvailabilityWrapper(ava.adelwhat__User__r.FirstName, ava.adelwhat__User__r.LastName, ava.adelwhat__User__r.Id, ava.adelwhat__Status__c, ava.Id));
+                wrapList.add(new AvailabilityWrapper(ava.adelwhat__User__r.FirstName, ava.adelwhat__User__r.LastName, ava.adelwhat__User__r.SmallPhotoUrl, ava.adelwhat__User__r.Id, ava.adelwhat__Status__c, ava.Id, ava.adelwhat__Team__r.Name ));
             }
         }
         availabilityList = wrapList;
         return wrapList;
     }
-    global class AvailabilityWrapper{
-        @AuraEnabled public String userFirstName {get;set;}
-        @AuraEnabled public String userLastName {get;set;}
-        @AuraEnabled public String userRecordId {get;set;}
-        @AuraEnabled public String Status {get;set;}
-        @AuraEnabled public String availabilityId {get;set;}
-        public AvailabilityWrapper(String userFirstName, String userLastName, String userRecordId, String Status, String availabilityId){
-            this.userFirstName = userFirstName+' '+userLastName;
+
+    global class AvailabilityWrapper {
+        @AuraEnabled public String userFirstName { get; set; }
+        @AuraEnabled public String userLastName { get; set; }
+        @AuraEnabled public String photo { get; set; }
+        @AuraEnabled public String userRecordId { get; set; }
+        @AuraEnabled public String Status { get; set; }
+        @AuraEnabled public String availabilityId { get; set; }
+        @AuraEnabled public String teamName { get; set; }
+
+        @AuraEnabled public List<String> statusLetters { get; set; } // NEW: List of single characters
+
+        public AvailabilityWrapper(String userFirstName, String userLastName, String photoURL, String userRecordId, String Status, String availabilityId, String teamName) {
+            this.userFirstName = userFirstName;
             this.userLastName = userLastName;
+            this.photo = photoURL;
             this.userRecordId = userRecordId;
             this.Status = Status;
             this.availabilityId = availabilityId;
+            this.statusLetters = splitStatus(Status);
+            this.teamName = teamName;
+        }
+
+        private List<String> splitStatus(String input) {
+            List<String> letters = new List<String>();
+            if (String.isNotBlank(input)) {
+                for (Integer i = 0; i < input.length(); i++) {
+                    letters.add(String.valueOf(input.substring(i, i + 1)));
+                }
+            }
+            return letters;
         }
     }
+
+    global class AvailabilityWrapper2 {
+        @AuraEnabled public String userFirstName { get; set; }
+        @AuraEnabled public String userLastName { get; set; }
+        @AuraEnabled public String photo { get; set; }
+        @AuraEnabled public String userRecordId { get; set; }
+        @AuraEnabled public String Status { get; set; }
+        @AuraEnabled public String StatusLabel { get; set; }
+        @AuraEnabled public String availabilityId { get; set; }
+        @AuraEnabled public String teamName { get; set; }
+        @AuraEnabled public String aboutMe { get; set; }
+
+        @AuraEnabled public List<String> statusLetters { get; set; } // NEW: List of single characters
+
+        public AvailabilityWrapper2(String userFirstName, String userLastName, String photoURL, String userRecordId, String Status, String StatusLabel, String availabilityId, String teamName, String aboutMe) {
+            this.userFirstName = userFirstName;
+            this.userLastName = userLastName;
+            this.photo = photoURL;
+            this.userRecordId = userRecordId;
+            this.Status = Status;
+            this.StatusLabel = StatusLabel;
+            this.availabilityId = availabilityId;
+            this.statusLetters = splitStatus(Status);
+            this.teamName = teamName;
+            this.aboutMe = aboutMe;
+        }
+
+        private List<String> splitStatus(String input) {
+            List<String> letters = new List<String>();
+            if (String.isNotBlank(input)) {
+                for (Integer i = 0; i < input.length(); i++) {
+                    letters.add(String.valueOf(input.substring(i, i + 1)));
+                }
+            }
+            return letters;
+        }
+    }
+
+    private static String getStatusLabel( String statLab){
+
+        Map<String, String> statusLabelMap = new Map<String, String>();
+        Schema.DescribeFieldResult dfr = adelwhat__User_Availability__c.adelwhat__Status__c.getDescribe();
+        for (Schema.PicklistEntry entry : dfr.getPicklistValues()) {
+            statusLabelMap.put(entry.getValue(), entry.getLabel());
+        }
+
+        return statusLabelMap.get(statLab);
+    }
+
+    @AuraEnabled(cacheable=true)
+    public static List<AvailabilityWrapper2> getAvailabilityByTeamId2(String teamId){
+        System.debug('=== getAvailabilityByTeamId ===');
+        System.debug('=== TeamId ===  '+teamId);
+
+        List<AvailabilityWrapper2> wrapList = new List<AvailabilityWrapper2>();
+
+        // Step 1: Build picklist value-to-label map
+        Map<String, String> statusLabelMap = new Map<String, String>();
+        Schema.DescribeFieldResult dfr = adelwhat__User_Availability__c.adelwhat__Status__c.getDescribe();
+        for (Schema.PicklistEntry entry : dfr.getPicklistValues()) {
+            statusLabelMap.put(entry.getValue(), entry.getLabel());
+        }
+
+        // Step 2: Query records
+        List<adelwhat__User_Availability__c> avaList;
+        if (String.isBlank(teamId)) {
+            // No filter: get all
+            avaList = [
+                    SELECT Id,
+                            adelwhat__Status__c,
+                            adelwhat__User__r.FirstName,
+                            adelwhat__User__r.LastName,
+                            adelwhat__User__r.SmallPhotoUrl,
+                            adelwhat__User__r.Id,
+                            adelwhat__User__r.AboutMe,
+                            adelwhat__Team__r.Name
+                    FROM adelwhat__User_Availability__c
+            ];
+        } else {
+            // Filter by team
+            avaList = [
+                    SELECT Id,
+                            adelwhat__Status__c,
+                            adelwhat__User__r.FirstName,
+                            adelwhat__User__r.LastName,
+                            adelwhat__User__r.SmallPhotoUrl,
+                            adelwhat__User__r.Id,
+                            adelwhat__User__r.AboutMe,
+                            adelwhat__Team__r.Name
+                    FROM adelwhat__User_Availability__c
+                    WHERE adelwhat__Team__c = :teamId
+            ];
+        }
+
+        // Step 3: Build wrapper list with label
+        for (adelwhat__User_Availability__c ava : avaList) {
+            String statusValue = ava.adelwhat__Status__c;
+            String statusLabel = getStatusLabel(statusValue);
+//            String statusLabel = statusLabelMap.get(statusValue); // map API value to label
+
+            wrapList.add(new AvailabilityWrapper2(
+                    ava.adelwhat__User__r.FirstName,
+                    ava.adelwhat__User__r.LastName,
+                    ava.adelwhat__User__r.SmallPhotoUrl,
+                    String.valueOf(ava.adelwhat__User__r.Id), // <-- Pass label here
+                    statusValue,
+                    statusLabel,
+                    String.valueOf(ava.Id),
+                    ava.adelwhat__Team__r.Name,
+                    ava.adelwhat__User__r.AboutMe
+            ));
+        }
+
+        System.debug(wrapList.size());
+        System.debug(wrapList);
+        return wrapList;
+    }
+
 
     @AuraEnabled(cacheable=true)
     public static adelwhat__User_Availability__c findCurrentUserAvailability() {
@@ -103,32 +326,41 @@ global with sharing class AvailabilityService {
     }
 
     @AuraEnabled(cacheable=true)
-    public static List<adelwhat__Availability_Status__mdt> getStatuses() {
-        return [
-                SELECT adelwhat__Display_Label__c, adelwhat__Style__c, adelwhat__Status_Code__c
-                FROM   adelwhat__Availability_Status__mdt
-                ORDER  BY adelwhat__Sort_Order__c
-        ];
+    public static List<adelwhat__Availability_Status__c> getStatuses() {
+        List<adelwhat__Availability_Status__c> lst = [ SELECT adelwhat__Display_Label__c, adelwhat__Status_Code__c FROM  adelwhat__Availability_Status__c ];
+        return lst;
     }
 
     @AuraEnabled
-    public static Id upsertStatus(Map<String,Object> dto) {
-        // 1) Build the record
-        Metadata.CustomMetadata cm = new Metadata.CustomMetadata();
-        cm.fullName = 'adelwhat__Availability_Status__mdt.' + (String)dto.get('DeveloperName');
-        cm.label    = (String)dto.get('MasterLabel');
+    public static void upsertStatus(String payload) {
+        System.debug('payload >>> '+payload);
+        if (String.isBlank(payload)) {
+            throw new AuraHandledException('No data received.');
+        }
 
-        Metadata.CustomMetadataValue active = new Metadata.CustomMetadataValue();
-        active.field = 'Active__c';
-        active.value = (Boolean)dto.get('Active');
-        cm.values.add(active);
+        List<Object> rawList = (List<Object>) JSON.deserializeUntyped(payload);
+        System.debug(rawList);
+        List<adelwhat__Availability_Status__c> toUpdate = new List<adelwhat__Availability_Status__c>();
 
-        // 2) Add to a deploy container
-        Metadata.DeployContainer dc = new Metadata.DeployContainer();
-        dc.addMetadata(cm);
+        for (Object item : rawList) {
+            Map<String, Object> row = (Map<String, Object>) item;
 
-        // 3) Queue the deployment (asynchronous)
-        Id jobId = Metadata.Operations.enqueueDeployment(dc, null);
-        return jobId;
+            if (row == null || !row.containsKey('Id')) continue;
+
+            String id    = (String) row.get('Id');
+            String label = (String) row.get('adelwhat__Display_Label__c');
+
+            if (String.isNotBlank(id)) {
+                toUpdate.add(new adelwhat__Availability_Status__c(
+                        Id = id,
+                        adelwhat__Display_Label__c = label
+                ));
+            }
+        }
+
+        if (!toUpdate.isEmpty()) {
+            update toUpdate;
+        }
     }
+
 }

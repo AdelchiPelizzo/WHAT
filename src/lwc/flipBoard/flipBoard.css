@@ -1,0 +1,46 @@
+.flipboard {
+    display: inline-flex;
+    font-family: 'Courier New', Courier, monospace;
+    perspective: 600px;
+}
+
+.flap {
+    display: inline-block;
+    font-size: 1.5rem;
+    width: 1.2rem;
+    height: 2rem;
+    background: black;
+    color: limegreen;
+    text-align: center;
+    line-height: 2rem;
+    margin: 0 1px;
+    transform-style: preserve-3d;
+    backface-visibility: hidden;
+}
+
+.flap.flip {
+    animation: flip 0.6s ease forwards;
+}
+
+
+@keyframes flip {
+    0% {
+        transform: rotateX(0deg);
+    }
+    50% {
+        transform: rotateX(-90deg);
+        color: transparent;
+    }
+    51% {
+        color: limegreen;
+    }
+    100% {
+        transform: rotateX(0deg);
+    }
+}
+
+/* Status colors */
+/* flipboard.css */
+.status-in .flap  { background: #006400; color: white; } /* dark green */
+.status-out .flap { background: #8B0000; color: white; } /* dark red  */
+.status-ooo .flap { background: darkorange; color: black;}

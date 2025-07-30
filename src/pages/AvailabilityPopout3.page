@@ -1,0 +1,321 @@
+<!--
+ - Created by adpel on 27/07/2025.
+ -->
+
+<apex:page id="AvailabilityPopout3" controller="AvailabilityVFController" showHeader="false" sidebar="false" cache="false">
+    <apex:slds />
+    <!-- CometD Scripts -->
+    <apex:includeScript value="{!URLFOR($Resource.cometd)}" />
+    <apex:includeScript value="{!URLFOR($Resource.ackExtension)}" />
+    <apex:includeScript value="{!URLFOR($Resource.replayExtension)}" />
+
+    <head>
+        <link rel="stylesheet" href="https://unpkg.com/@salesforce-ux/design-system@latest/assets/styles/salesforce-lightning-design-system.min.css" />
+        <title>Availability Table</title>
+    </head>
+
+    <style>
+        /* Your existing styles */
+        .board-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        .board {
+            max-width: 900px;
+            width: 80vw;
+            font-family: "Salesforce Sans", Arial, sans-serif;
+            font-size: 1rem;
+            color: #333;
+            background: white;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            box-shadow: 0 2px 8px rgb(0 0 0 / 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        thead, th{
+            background-color: #005fb2;
+            color: white;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+
+/*        tr.availability-row {*/
+/*            height: 3rem; !* Sets a minimum row height *!*/
+/*        }*/
+
+/*        tr.availability-row td {*/
+/*            padding-top: 1rem;*/
+/*            padding-bottom: 1rem;*/
+/*            line-height: 1.3rem; !* Ensures consistent vertical spacing inside cells *!*/
+/*        }*/
+
+        .close-btn {
+            background: none;
+            border: 1px solid #ccc;
+            color: #333;
+            padding: 4px 9px;
+            font-size: 0.9rem;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .close-btn:hover {
+            background: #cacdfa;
+            color:white
+        }
+
+        tbody tr:nth-child(odd) {
+            background-color: #f9f9f9;
+        }
+
+        .username-text {
+            font-size: 1.2rem;
+            font-weight: 500;
+            text-transform: capitalize; /* Or just use title case text */
+            color: #333;
+        }
+
+        .username-text2 {
+            font-family: monospace;
+            font-size: 1.2rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            font-weight: bold;
+            display: inline-block;
+            line-height: 1.2; /* fine-tune vertical centering */
+        }
+
+        .username {
+            padding-left: 15px !important; /* now only layout-related styles */
+            vertical-align: middle;
+        }
+
+        .status-badge {
+            background: none !important;
+            font-weight: 900 !important;
+            font-size: 1.5rem !important;
+            display: inline-block;
+            width: 10ch; /* Reserve space for up to 10 characters */
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .status-badge.in { color: green; }
+        .status-badge.out { color: red; }
+        .status-badge.at-lunch { color: orange; }
+        .status-badge.ooo { color: red; }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        .status-badge.blinking {
+            animation: blink 0.6s step-start infinite !important;
+        }
+
+        .box{
+		display: flex;
+		align-items: center;               /* vertical centering */
+		max-width: 300px;
+		height: calc(1.5em * 3);           /* height = 3 lines of text */
+		padding: 0.5em;               /* Optional: space around text */
+        }
+
+        .box {
+            display: flex;
+            align-items: center;              /* vertical centering */
+            justify-content: flex-start;      /* or center/right if desired */
+            width: 100%;
+            height: 100%;                     /* fills td vertically */
+            padding: 0.5em;
+        }
+
+        .notes{
+            white-space: normal;       /* allow wrapping */
+            line-height: 1.5em;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;     /* max 3 lines */
+            -webkit-box-orient: vertical;
+            width: 100%;
+/*            font-family: "Lucida Sans", cursive;*/
+            font-size: 1em; /* adjust as needed */
+        }
+    </style>
+
+    <script>
+        var cometd = new org.cometd.CometD();
+
+        // Global blinking timeout tracker
+        const blinkingTimeouts = {};
+
+        function updateStatusBadge(availabilityId, newStatus) {
+            const row = document.querySelector(`tr[data-availability-id="${availabilityId}"]`);
+
+            if (!row) {
+                console.warn('Row not found for availabilityId:', availabilityId);
+                return;
+            }
+
+            const badge = row.querySelector('.status-badge');
+            if (!badge) {
+                console.warn('No badge found for row:', availabilityId);
+                return;
+            }
+
+            // Cancel any existing blinking timeout
+            if (blinkingTimeouts[availabilityId]) {
+                clearTimeout(blinkingTimeouts[availabilityId]);
+            }
+
+            // Reset class names
+            badge.className = 'status-badge';
+
+            switch (newStatus) {
+                case 'ACTIVE':
+                    badge.classList.add('in');
+                    break;
+                case 'INACTIVE':
+                    badge.classList.add('out');
+                    break;
+                case 'PAUSE':
+                    badge.classList.add('at-lunch');
+                    break;
+                case 'OOO':
+                    badge.classList.add('ooo');
+                    break;
+                default:
+                    // Default style if needed
+                    break;
+            }
+
+            badge.textContent = newStatus;
+
+            // Add blinking effect
+            badge.classList.add('blinking');
+
+            // Stop blinking after 10 seconds
+            blinkingTimeouts[availabilityId] = setTimeout(() => {
+                badge.classList.remove('blinking');
+                delete blinkingTimeouts[availabilityId];
+            }, 10000);
+        }
+
+        function initCometD() {
+            cometd.configure({
+                url: window.location.protocol + '//' + window.location.hostname + '/cometd/54.0/',
+                requestHeaders: { Authorization: 'OAuth {!$Api.Session_ID}' },
+                appendMessageTypeToURL: false
+            });
+
+            cometd.websocketEnabled = false;
+
+            cometd.handshake(function (handshakeReply) {
+                if (handshakeReply.successful) {
+                    console.log('CometD handshake successful');
+
+                    cometd.subscribe('/data/adelwhat__User_Availability__ChangeEvent', function (message) {
+                        console.log('CDC event received:', message);
+                        const payload = message.data.payload;
+                        const recordIds = payload.ChangeEventHeader.recordIds;
+
+                        if (!recordIds || recordIds.length === 0) {
+                            console.warn('No recordIds found in ChangeEventHeader');
+                            return;
+                        }
+
+                        const availabilityId = recordIds[0];
+                        const newStatus = payload.adelwhat__Status__c;
+
+                        console.log('Updating availabilityId:', availabilityId, 'to status:', newStatus);
+
+                        updateStatusBadge(availabilityId, newStatus);
+                    });
+                } else {
+                    console.error('CometD handshake failed');
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            initCometD();
+        });
+    </script>
+
+    <body>
+    <div class="board-wrapper">
+        <div class="board" id="board">
+            <apex:form>
+                <h2 class="slds-text-heading_large" style="padding: 20px">
+                    <strong>{!teamName}</strong> Team Availability
+                </h2>
+                <div>
+                    <table>
+                        <thead>
+                        <tr>
+                            <th style="padding: 16px; font-size: 1.1rem; line-height: 1.4; box-sizing: border-box;"></th>
+                            <th style="padding: 16px; font-size: 1.1rem; line-height: 1.4; box-sizing: border-box;">Name</th>
+                            <th style="padding-left: 20px; font-size: 1.1rem; line-height: 1.4; box-sizing: border-box;">Status</th>
+                            <th style="padding-left: 20px; font-size: 1.1rem; line-height: 1.4; box-sizing: border-box;">Notes</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <apex:repeat value="{!availabilities}" var="a">
+                            <tr  id="row-{!a.userRecordId}"  data-user-id="{!a.userRecordId}" data-availability-id="{!a.availabilityId}">
+                                <td>
+                                    <div style="margin-left:5px; height: 50px; width: 50px; border-radius: 50%; overflow: hidden;">
+                                        <img src="{!a.photo}" alt="User Photo" style="height: 100%; width: 100%; object-fit: cover;" />
+                                    </div>
+<!--                                    <img src="{!a.photo}" style="height: 50px; width: 50px; border-radius: 50%;" />-->
+                                </td>
+                                <td class="username">
+                                    <span class="username-text">{!a.userFirstName} {!a.userLastName}</span>
+                                </td>
+                                <td style="padding-left: 20px; vertical-align:middle;">
+                                            <span class="status-badge
+                                                {!IF(a.Status = 'ACTIVE', 'in', '')}
+                                                {!IF(a.Status = 'INACTIVE', 'out', '')}
+                                                {!IF(a.Status = 'PAUSE', 'at-lunch', '')}
+                                                {!IF(a.Status = 'OOO', 'ooo', '')}">
+                                                {!a.StatusLabel}
+                                            </span>
+                                </td>
+                                <td style="padding: 2px;" >
+                                    <div class="box">
+                                        <div class="notes">
+                                            {!a.AboutMe}
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </apex:repeat>
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 20px; padding-top: 10px;">
+                    <button class="close-btn" onclick="window.close(); return false;">Close</button>
+                </div>
+            </apex:form>
+        </div>
+    </div>
+    </body>
+</apex:page>

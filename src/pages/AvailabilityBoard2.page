@@ -1,0 +1,125 @@
+<apex:page controller="adelwhat.AvailabilityService" showHeader="false" sidebar="false" cache="false">
+    <apex:slds />
+    <apex:includeScript value="{!URLFOR($Resource.cometd)}" />
+    <apex:includeScript value="{!URLFOR($Resource.ackExtension)}" />
+    <apex:includeScript value="{!URLFOR($Resource.replayExtension)}" />
+    <apex:stylesheet value="{!URLFOR($Resource.FlipTestStyles)}" />
+
+    <script>
+        var cometd = new org.cometd.CometD();
+
+        function initCometD() {
+            cometd.configure({
+                url: window.location.protocol + '//' + window.location.hostname + '/cometd/54.0/',
+                requestHeaders: { Authorization: 'OAuth {!$Api.Session_ID}' },
+                appendMessageTypeToURL: false
+            });
+
+            cometd.websocketEnabled = false;
+
+            cometd.handshake(function (handshakeReply) {
+                if (handshakeReply.successful) {
+                    console.log('CometD handshake successful');
+
+                    cometd.subscribe('/data/adelwhat__User_Availability__ChangeEvent', function (message) {
+                        var payload = message.data.payload;
+                        var recordIds = payload.ChangeEventHeader.recordIds;
+                        if (!recordIds || !recordIds.length) return;
+
+                        var availabilityId = recordIds[0];
+                        var newStatus = payload.adelwhat__Status__c;
+                        var row = document.querySelector('tr[data-availability-id="' + availabilityId + '"]');
+
+                        if (row) {
+                            var badge = row.querySelector('.status-badge');
+                            badge.className = 'status-badge ' + getStatusClass(newStatus);
+                            flipStatus(badge.querySelector('.flipboard'), newStatus);
+                        }
+                    });
+                } else {
+                    console.error('CometD handshake failed');
+                }
+            });
+        }
+
+        function getStatusClass(status) {
+            switch (status) {
+                case 'ACTIVE': return 'in';
+                case 'INACTIVE': return 'out';
+                case 'PAUSE': return 'at-lunch';
+                case 'OOO': return 'ooo';
+                default: return '';
+            }
+        }
+
+        function flipStatus(boardElement, newText) {
+            boardElement.innerHTML = '';
+
+            [...newText].forEach((letter, index) => {
+                const cell = document.createElement('div');
+                cell.className = 'flip-cell';
+
+                const span = document.createElement('span');
+                span.textContent = letter;
+                span.style.opacity = '0';  // Hide initially
+
+                cell.appendChild(span);
+                boardElement.appendChild(cell);
+
+                setTimeout(() => {
+                    void cell.offsetWidth;
+                    cell.classList.add('flipping');
+                    // Show letter immediately when flip starts
+                    span.style.opacity = '1';
+
+                    setTimeout(() => {
+                        // Keep letter visible and remove flipping class
+                        cell.classList.remove('flipping');
+                    }, 400);
+                }, index * 100);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initCometD);
+    </script>
+
+    <body>
+    <div class="slds-scope" id="board">
+        <apex:form>
+            <h2 class="slds-text-heading_medium">Team Availability Board</h2>
+            <table class="availability-table">
+                <thead>
+                <tr>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Status</th>
+                    <th>User Id</th>
+                </tr>
+                </thead>
+                <tbody>
+                <apex:repeat value="{!availabilityList}" var="a">
+                    <tr data-user-id="{!a.userRecordId}" data-availability-id="{!a.availabilityId}">
+                        <td>{!a.userFirstName}</td>
+                        <td>{!a.userLastName}</td>
+                        <td>
+                                    <span class="status-badge {!IF(a.Status = 'ACTIVE', 'in', '')}
+                                                      {!IF(a.Status = 'INACTIVE', 'out', '')}
+                                                      {!IF(a.Status = 'PAUSE', 'at-lunch', '')}
+                                                      {!IF(a.Status = 'OOO', 'ooo', '')}">
+                                        <div class="flipboard">
+                                            <apex:repeat value="{!a.statusLetters}" var="letter">
+                                                <div class="flip-cell">{!letter}</div>
+                                            </apex:repeat>
+                                        </div>
+                                    </span>
+                        </td>
+                        <td>{!a.userRecordId}</td>
+                    </tr>
+                </apex:repeat>
+                </tbody>
+            </table>
+            <button class="close-btn" onclick="window.close(); return false;">Close</button>
+        </apex:form>
+    </div>
+    </body>
+</apex:page>

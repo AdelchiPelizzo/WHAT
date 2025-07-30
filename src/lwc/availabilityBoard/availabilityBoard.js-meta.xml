@@ -9,4 +9,12 @@
         <target>lightning__AppPage</target>
         <target>lightning__HomePage</target>
     </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__RecordPage,lightning__AppPage,lightning__HomePage">
+            <property label="teamName" name="teamName" type="String" required="true" default="Your Team Name Here"/>
+<!--            <property label="headerIconType" name="headerIconType" type="String" required="true" datasource="Utility, Doctype, Standard, Custom, Action"/>-->
+<!--            <property label="headerIconName" name="headerIconName" type="String" required="true"/>-->
+        </targetConfig>
+    </targetConfigs>
+
 </LightningComponentBundle>

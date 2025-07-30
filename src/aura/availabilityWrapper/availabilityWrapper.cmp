@@ -1,0 +1,7 @@
+<!--
+ - Created by adpel on 10/07/2025.
+ -->
+
+<aura:component access="GLOBAL">
+    <c:availabilityBoard />
+</aura:component>

@@ -10,11 +10,33 @@
     </types>
     <types>
         <members>AvailabilityService</members>
+        <members>FlagCache</members>
+        <members>FlagPostInstall</members>
+        <members>FlagPostInstallTest</members>
+        <members>FlagControlController</members>
+        <members>FlagCheckScheduler</members>
+        <members>FlagCheckQueueable</members>
+        <members>AvailabilityVFController</members>
         <name>ApexClass</name>
     </types>
     <types>
         <members>AvailabilityBoardPopup</members>
+        <members>AvailabilityBoard2</members>
+        <members>AvailabilityPopoutBlinking</members>
+        <members>AvailabilityPopout3</members>
         <name>ApexPage</name>
+    </types>
+    <types>
+        <members>availabilityWrapper</members>
+        <members>availabilityBoardPopup</members>
+        <name>AuraDefinitionBundle</name>
+    </types>
+    <types>
+        <name>CustomMetadata</name>
+    </types>
+    <types>
+        <members>Flag_Status__c</members>
+        <name>CustomObject</name>
     </types>
     <version>60.0</version>
 </Package>

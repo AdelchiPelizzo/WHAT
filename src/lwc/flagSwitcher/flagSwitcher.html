@@ -1,0 +1,18 @@
+<template>
+    <lightning-card title="Flag Switcher - Static Data 13.47">
+
+        <lightning-datatable
+                key-field="id"
+                data={records}
+                columns={columns}
+                draft-values={draftValues}
+                onsave={handleSave}
+                oncellchange={handleCellChange}
+                custom-types={customTypes}>
+        </lightning-datatable>
+
+    </lightning-card>
+</template>
+
+
+

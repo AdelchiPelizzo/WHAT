@@ -1,0 +1,191 @@
+body {
+    font-family: "Salesforce Sans", Arial, sans-serif;
+    background-color: #f9fafb;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+}
+
+.board {
+    max-width: 900px;
+    margin: 0 auto;
+    font-size: 3.5rem;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+thead {
+    background-color: #005fb2;
+    color: white;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+}
+
+th, td {
+    padding: 0.75em 1em;
+    text-align: left;
+}
+
+tbody tr:nth-child(odd) {
+    background-color: #f9f9f9;
+}
+
+tbody tr:hover {
+    background-color: #d6e9ff;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.status-badge {
+    padding: 2px; /* Corrected padding */
+    display: inline-flex;
+    gap: 4px;
+    background: none;
+    border: none;
+}
+
+/* Status badge background colors
+.status-badge.in {
+    background-color: #28a745;
+}
+
+.status-badge.out,
+.status-badge.ooo {
+    background-color: #dc3545;
+}
+
+.status-badge.at-lunch {
+    background-color: #ffc107;
+    color: #333;
+} */
+
+.status-badge.out .flip-cell {
+  background: #8B0000;
+  color: white;
+}
+
+.status-badge.at-lunch .flip-cell {
+  background: orange;
+  color: black;
+}
+
+.status-badge.ooo .flip-cell {
+  background: darkorange;
+  color: black;
+}
+
+/* Optional: remove hover background on table rows */
+/*tbody tr:hover {
+  background-color: transparent;
+}*/
+
+button.close-btn {
+    margin: 15px 0;
+    padding: 8px 16px;
+    background-color: #3498db;
+    border: none;
+    border-radius: 4px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+button.close-btn:hover {
+    background-color: #2980b9;
+}
+
+/* Flipboard styles */
+.flipboard {
+    display: flex;
+    gap: 2px;
+    font-family: monospace;
+    perspective: 600px;
+    font-size: 1.5rem;
+}
+
+.flip-cell {
+    display: inline-block;
+    font-size: 1.5rem !important;
+    width: 25px;        /* smaller width */
+    height: 40px;       /* smaller height */
+    line-height: 40px;  /* center vertically */
+    text-align: center;
+    font-size: 2.5rem;
+    background-color: #000;
+    color: #fff;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+}
+
+@keyframes flip {
+    0% {
+        transform: rotateX(0deg);
+    }
+    50% {
+        transform: rotateX(90deg);
+    }
+    100% {
+        transform: rotateX(0deg);
+    }
+}
+
+.flip-cell.flipping {
+    animation: flip 0.6s ease-in-out;
+}
+
+.flip-cell, .flip-cell span {
+    font-family: "Salesforce Sans", Arial, sans-serif;
+}
+
+
+.flip-cell span {
+    padding: 0;
+    margin: 0
+    display: block;
+    width: 100%;
+    height: 100%;
+    vertical-align: middle;
+    line-height: inherit; /* Same as parent */
+    transform: none !important; /* Force no transform */
+}
+
+.flip-cell:nth-child(1) {
+    transition-delay: 0s;
+}
+
+.flip-cell:nth-child(2) {
+    transition-delay: 0.05s;
+}
+
+.flip-cell:nth-child(3) {
+    transition-delay: 0.1s;
+}
+
+.flip-cell.flipping span {
+    transform: rotateX(-90deg);
+}
+
+/* Optional: color variations for flip cells by status */
+.status-badge.in .flip-cell {
+    background-color: #006400;
+    color: white;
+}
+
+.status-badge.out .flip-cell,
+.status-badge.ooo .flip-cell {
+    background-color: #8B0000;
+    color: white;
+}
+
+.status-badge.at-lunch .flip-cell {
+    background-color: darkorange;
+    color: black;
+}
