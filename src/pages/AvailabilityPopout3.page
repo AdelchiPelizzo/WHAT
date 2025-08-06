@@ -28,7 +28,7 @@
         }
 
         .board {
-            max-width: 900px;
+            max-width: 950px;
             width: 80vw;
             font-family: "Salesforce Sans", Arial, sans-serif;
             font-size: 1rem;
@@ -103,17 +103,26 @@
 
         .username {
             padding-left: 15px !important; /* now only layout-related styles */
+            padding-right: 25px !important; /* now only layout-related styles */
             vertical-align: middle;
         }
 
+        .statusBox{
+                padding-left: 20px;
+                vertical-align: middle;
+                width:30%;
+                word-wrap: break-word;
+                white-space: normal;
+        }
+
         .status-badge {
-            background: none !important;
             font-weight: 900 !important;
             font-size: 1.5rem !important;
             display: inline-block;
-            width: 10ch; /* Reserve space for up to 10 characters */
             text-align: left;
-            white-space: nowrap;
+            white-space: normal; /* allow wrapping */
+            word-wrap: break-word;
+            width: 100%; /* allow it to respect the td's width */
         }
 
         .status-badge.in { color: green; }
@@ -132,11 +141,11 @@
         }
 
         .box{
-		display: flex;
-		align-items: center;               /* vertical centering */
-		max-width: 300px;
-		height: calc(1.5em * 3);           /* height = 3 lines of text */
-		padding: 0.5em;               /* Optional: space around text */
+            display: flex;
+            align-items: center;               /* vertical centering */
+            max-width: 300px;
+            height: calc(1.5em * 3);           /* height = 3 lines of text */
+            padding: 0.5em;               /* Optional: space around text */
         }
 
         .box {
@@ -290,7 +299,7 @@
                                 <td class="username">
                                     <span class="username-text">{!a.userFirstName} {!a.userLastName}</span>
                                 </td>
-                                <td style="padding-left: 20px; vertical-align:middle;">
+                                <td class="statusBox">
                                             <span class="status-badge
                                                 {!IF(a.Status = 'ACTIVE', 'in', '')}
                                                 {!IF(a.Status = 'INACTIVE', 'out', '')}

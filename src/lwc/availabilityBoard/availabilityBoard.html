@@ -33,7 +33,7 @@
                 <tbody>
                 <template if:true={rows}>
                     <template for:each={processedRows} for:item="row">
-                        <tr key={row.userRecordId}>
+                        <tr key={row.userRecordId}  class="custom-table-row">
                             <td>
                                 <template if:true={row.photo}>
                                     <div style="height: 50px; width: 50px; border-radius: 50%; overflow: hidden;">
@@ -71,10 +71,22 @@
                     <span class="popout-text">Pop out board</span>
                 </a>
             </div>
-            <div class="slds-m-around_x-large">
+            <div class="slds-m-around_x-large slds-grid slds-align-center">
                 <a href="#" onclick={openPicklistSetup} class="popout-link">
                     <lightning-icon icon-name="utility:picklist_type" size="small" alternative-text="Edit Statuses"></lightning-icon>
-                    <span class="popout-text">Change Status Values</span>
+                    <span class="popout-text slds-m-left_xx-small">Change Status Values</span>
+
+                    <div class="custom-tooltip-container slds-m-left_x-small">
+                        <lightning-icon icon-name="utility:info" size="small" alternative-text="Help" class="red-info-icon"></lightning-icon>
+                        <div class="custom-tooltip slds-popover slds-popover_tooltip slds-nubbin_top-left" role="tooltip">
+                            <div class="slds-popover__body">
+                                This link opens to Availability Object.<br />
+                                Choose Status field to edit its values.<br/>
+                                Object Manager → Availability → Fields → Status<br/>
+                                <strong>IMPORTANT: Do not change API names.</strong>
+                            </div>
+                        </div>
+                    </div>
                 </a>
             </div>
         </div>

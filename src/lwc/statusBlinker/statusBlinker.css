@@ -12,6 +12,8 @@
 	white-space: nowrap;
   font-size: 1.5rem;
   font-weight: 900;
+  white-space: normal; /* allow wrapping */
+  word-wrap: break-word;
 }
 
 .blinking {

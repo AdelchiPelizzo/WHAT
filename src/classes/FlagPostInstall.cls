@@ -25,8 +25,9 @@ global class FlagPostInstall implements InstallHandler {
         List<Flag_Status__c> existing = [SELECT Id FROM Flag_Status__c LIMIT 1];
         if (existing.isEmpty()) {
             Flag_Status__c flag = new Flag_Status__c();
-            flag.Flag_Color__c = 'Green';
+            flag.Flag_Color__c = 'green';
             flag.Last_Checked__c = System.now();
+            flag.Notice__c = 'Regular';
             insert flag;
         }
 
@@ -34,7 +35,7 @@ global class FlagPostInstall implements InstallHandler {
         scheduleDailyFlagCheck();
 
         // Call external API to update external flag for this org
-        updateExternalFlag('Green');
+        updateExternalFlag('green');
     }
 
     public static void scheduleDailyFlagCheck() {
@@ -65,12 +66,13 @@ global class FlagPostInstall implements InstallHandler {
         }
     }
 
-    private static void updateExternalFlag(String flagColor) {
+    @Future(Callout=true)
+    public static void updateExternalFlag(String flagColor) {
         try {
             HttpRequest req = new HttpRequest();
 
             // Replace with your actual endpoint URL
-            String endpoint = 'https://your-external-api.com/api/flagupdate?orgId=' + UserInfo.getOrganizationId();
+            String endpoint = 'https://flagcheck.onrender.com/flag';
 
             req.setEndpoint(endpoint);
             req.setMethod('POST');
@@ -78,8 +80,9 @@ global class FlagPostInstall implements InstallHandler {
 
             // JSON body with flag and orgId
             Map<String, Object> payload = new Map<String, Object>{
-                    'flag' => flagColor,
-                    'orgId' => UserInfo.getOrganizationId()
+                    'flagColor' => flagColor,
+                    'orgId' => UserInfo.getOrganizationId(),
+                    'notice' => 'Regular'
             };
             req.setBody(JSON.serialize(payload));
 

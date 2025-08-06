@@ -16,6 +16,7 @@ export default class FlagSwitcher extends LightningElement {
 				{ label: 'Org Id', fieldName: 'orgId' },
 				{ label: 'App Name', fieldName: 'appName', editable: true },
 				{ label: 'Flag Color', fieldName: 'flagColor', editable: true},
+				{ label: 'Notice', fieldName: 'notice', editable: true},
 //            type: 'flagcolorcell',
 //            editable: true,
 //            typeAttributes: {
@@ -70,14 +71,14 @@ export default class FlagSwitcher extends LightningElement {
         console.log("✅ Fetched data:", data);
 
         // Map backend data to camelCase props
-        this.records = data;
-//        .map(record => ({
-//          id: record._id,
-//          orgId: record.orgId,          // camelCase as is
-//          appName: record.appName,     // snake_case → camelCase
-//          flagColor: record.flagColor, // snake_case → camelCase
-//          timestamp: record.timestamp
-//        }));
+				this.records = data.map(record => ({
+						id: record.id,
+						orgId: record.orgId,
+						appName: record.appName,
+						flagColor: record.flagColor,
+						timestamp: record.timestamp,
+      			notice: record.notice,
+				}));
       })
       .catch(error => {
         console.error('❌ Fetch error:', error);
@@ -95,7 +96,8 @@ export default class FlagSwitcher extends LightningElement {
 								? {
 										...record,
 										flagColor: update.flagColor !== undefined ? update.flagColor : record.flagColor,
-										appName: update.appName !== undefined ? update.appName : record.appName
+										appName: update.appName !== undefined ? update.appName : record.appName,
+										notice: update.notice !== undefined ? update.notice : record.notice,
 								}
 								: record;
 				});
@@ -111,7 +113,8 @@ export default class FlagSwitcher extends LightningElement {
 										headers: { 'Content-Type': 'application/json' },
 										body: JSON.stringify({
 												flagColor: update.flagColor,
-												appName: update.appName
+												appName: update.appName,
+            						notice: update.notice,
 										})
 								}).then(res => {
 										if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);

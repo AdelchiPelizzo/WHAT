@@ -5,94 +5,97 @@
 global with sharing class AvailabilityService {
 
     public static List<AvailabilityWrapper> availabilityList { get; set; }
-    public String teamId { get; set; }
-    public String teamName { get; set; }
-
-    public AvailabilityService() {
-        availabilityList = new List<AvailabilityWrapper>();
-        teamId = ApexPages.currentPage().getParameters().get('teamId');
-        loadAvailability(teamId);
-        teamName = [SELECT Name FROM adelwhat__Team__c WHERE Id =: teamId LIMIT 1].Name;
-    }
+//    public String teamId { get; set; }
+//    public String teamName { get; set; }
+//
+//    public AvailabilityService() {
+//        availabilityList = new List<AvailabilityWrapper>();
+//        teamId = ApexPages.currentPage().getParameters().get('teamId');
+//        loadAvailability(teamId);
+//        teamName = [SELECT Name FROM adelwhat__Team__c WHERE Id =: teamId LIMIT 1].Name;
+//    }
 
     @AuraEnabled(cacheable=true)
     public static List<adelwhat__Team__c> getTeamOptions() {
         return [SELECT Id, Name FROM adelwhat__Team__c ORDER BY Name];
     }
 
+    @AuraEnabled
+    public static String def(){ return [SELECT DurableId, QualifiedApiName FROM EntityDefinition WHERE QualifiedApiName = 'adelwhat__User_Availability__c' LIMIT 1].DurableId;}
+
     // Load availability data from the custom object
-    private void loadAvailability(String teamId) {
-        System.debug('Loading Filtered Data');
-        List<adelwhat__User_Availability__c> avaList = [
-                SELECT Id, adelwhat__Status__c, adelwhat__User__r.FirstName, adelwhat__User__r.LastName, adelwhat__User__r.SmallPhotoUrl, adelwhat__User__r.Id, adelwhat__Team__r.Name
-                FROM adelwhat__User_Availability__c
-                WHERE adelwhat__Team__c =: teamId
-        ];
-
-        for(adelwhat__User_Availability__c ava : avaList){
-            availabilityList.add(new AvailabilityWrapper(
-                    ava.adelwhat__User__r.FirstName,
-                    ava.adelwhat__User__r.LastName,
-                    ava.adelwhat__User__r.SmallPhotoUrl,
-                    ava.adelwhat__User__r.Id,
-                    ava.adelwhat__Status__c,
-                    ava.Id,
-                    ava.adelWhat__Team__r.Name
-            ));
-        }
-    }
-
-    @AuraEnabled(cacheable=true)
-    public static List<AvailabilityWrapper> getAvailabilityByTeamId(String teamId){
-        System.debug('=== getAvailabilityByTeamId ===');
-        System.debug('=== TeamId ===  '+teamId);
-        List<AvailabilityWrapper> wrapList = new List<AvailabilityWrapper>();
-
-        List<adelwhat__User_Availability__c> avaList;
-        if(String.isBlank(teamId)) {
-            // No filter: get all
-            avaList = [
-                    SELECT Id,
-                            adelwhat__Status__c,
-                            adelwhat__User__r.FirstName,
-                            adelwhat__User__r.LastName,
-                            adelwhat__User__r.SmallPhotoUrl,
-                            adelwhat__User__r.Id,
-                            adelwhat__Team__r.Name
-                    FROM adelwhat__User_Availability__c
-            ];
-        } else {
-            // Filter by team
-            avaList = [
-                    SELECT Id,
-                            adelwhat__Status__c,
-                            adelwhat__User__r.FirstName,
-                            adelwhat__User__r.LastName,
-                            adelwhat__User__r.SmallPhotoUrl,
-                            adelwhat__User__r.Id,
-                            adelwhat__Team__r.Name
-                    FROM adelwhat__User_Availability__c
-                    WHERE adelwhat__Team__c = :teamId
-            ];
-        }
-
-        for(adelwhat__User_Availability__c ava : avaList){
-            wrapList.add(new AvailabilityWrapper(
-                    ava.adelwhat__User__r.FirstName,
-                    ava.adelwhat__User__r.LastName,
-                    ava.adelwhat__User__r.SmallPhotoUrl,
-                    ava.adelwhat__User__r.Id,
-                    ava.adelwhat__Status__c,
-                    ava.Id,
-                    ava.adelwhat__Team__r.Name
-            ));
-        }
-
-        availabilityList = wrapList;
-        System.debug(availabilityList.size());
-        System.debug(availabilityList);
-        return wrapList;
-    }
+//    private static void loadAvailability(String teamId) {
+//        System.debug('Loading Filtered Data');
+//        List<adelwhat__User_Availability__c> avaList = [
+//                SELECT Id, adelwhat__Status__c, adelwhat__User__r.FirstName, adelwhat__User__r.LastName, adelwhat__User__r.SmallPhotoUrl, adelwhat__User__r.Id, adelwhat__Team__r.Name
+//                FROM adelwhat__User_Availability__c
+//                WHERE adelwhat__Team__c =: teamId
+//        ];
+//
+//        for(adelwhat__User_Availability__c ava : avaList){
+//            availabilityList.add(new AvailabilityWrapper(
+//                    ava.adelwhat__User__r.FirstName,
+//                    ava.adelwhat__User__r.LastName,
+//                    ava.adelwhat__User__r.SmallPhotoUrl,
+//                    ava.adelwhat__User__r.Id,
+//                    ava.adelwhat__Status__c,
+//                    ava.Id,
+//                    ava.adelWhat__Team__r.Name
+//            ));
+//        }
+//    }
+//31.07
+//    @AuraEnabled(cacheable=true)
+//    public static List<AvailabilityWrapper> getAvailabilityByTeamId(String teamId){
+//        System.debug('=== getAvailabilityByTeamId ===');
+//        System.debug('=== TeamId ===  '+teamId);
+//        List<AvailabilityWrapper> wrapList = new List<AvailabilityWrapper>();
+//
+//        List<adelwhat__User_Availability__c> avaList;
+//        if(String.isBlank(teamId)) {
+//            // No filter: get all
+//            avaList = [
+//                    SELECT Id,
+//                            adelwhat__Status__c,
+//                            adelwhat__User__r.FirstName,
+//                            adelwhat__User__r.LastName,
+//                            adelwhat__User__r.SmallPhotoUrl,
+//                            adelwhat__User__r.Id,
+//                            adelwhat__Team__r.Name
+//                    FROM adelwhat__User_Availability__c
+//            ];
+//        } else {
+//            // Filter by team
+//            avaList = [
+//                    SELECT Id,
+//                            adelwhat__Status__c,
+//                            adelwhat__User__r.FirstName,
+//                            adelwhat__User__r.LastName,
+//                            adelwhat__User__r.SmallPhotoUrl,
+//                            adelwhat__User__r.Id,
+//                            adelwhat__Team__r.Name
+//                    FROM adelwhat__User_Availability__c
+//                    WHERE adelwhat__Team__c = :teamId
+//            ];
+//        }
+//
+//        for(adelwhat__User_Availability__c ava : avaList){
+//            wrapList.add(new AvailabilityWrapper(
+//                    ava.adelwhat__User__r.FirstName,
+//                    ava.adelwhat__User__r.LastName,
+//                    ava.adelwhat__User__r.SmallPhotoUrl,
+//                    ava.adelwhat__User__r.Id,
+//                    ava.adelwhat__Status__c,
+//                    ava.Id,
+//                    ava.adelwhat__Team__r.Name
+//            ));
+//        }
+//
+//        availabilityList = wrapList;
+//        System.debug(availabilityList.size());
+//        System.debug(availabilityList);
+//        return wrapList;
+//    }
 
     @AuraEnabled (cacheable=true)
     public static List<AvailabilityWrapper> getAvailabilityWithUser2() {

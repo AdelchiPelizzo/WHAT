@@ -13,7 +13,7 @@ public with sharing class AvailabilityVFController {
         teamId = ApexPages.currentPage().getParameters().get('teamId');
         if (String.isNotBlank(teamId)) {
             try {
-                teamName = [SELECT Name FROM adelwhat__Team__c WHERE Id = :teamId LIMIT 1].Name;
+                teamName = [SELECT Name FROM Team__c WHERE Id = :teamId LIMIT 1].Name;
             } catch (Exception e) {
                 teamName = 'Unknown';
             }
@@ -27,32 +27,32 @@ public with sharing class AvailabilityVFController {
 
         // Map picklist values to labels
         Map<String, String> statusLabelMap = new Map<String, String>();
-        Schema.DescribeFieldResult dfr = adelwhat__User_Availability__c.adelwhat__Status__c.getDescribe();
+        Schema.DescribeFieldResult dfr = User_Availability__c.Status__c.getDescribe();
         for (Schema.PicklistEntry entry : dfr.getPicklistValues()) {
             statusLabelMap.put(entry.getValue(), entry.getLabel());
         }
 
-        List<adelwhat__User_Availability__c> avaList;
+        List<User_Availability__c> avaList;
         if (String.isBlank(teamId)) {
-            avaList = [SELECT Id, adelwhat__Status__c, adelwhat__User__r.FirstName, adelwhat__User__r.LastName, adelwhat__User__r.SmallPhotoUrl, adelwhat__User__r.Id, adelwhat__User__r.AboutMe, adelwhat__Team__r.Name FROM adelwhat__User_Availability__c];
+            avaList = [SELECT Id, Status__c, User__r.FirstName, User__r.LastName, User__r.SmallPhotoUrl, User__r.Id, User__r.AboutMe, Team__r.Name FROM User_Availability__c];
         } else {
-            avaList = [SELECT Id, adelwhat__Status__c, adelwhat__User__r.FirstName, adelwhat__User__r.LastName, adelwhat__User__r.SmallPhotoUrl, adelwhat__User__r.Id, adelwhat__User__r.AboutMe, adelwhat__Team__r.Name FROM adelwhat__User_Availability__c WHERE adelwhat__Team__c = :teamId];
+            avaList = [SELECT Id, Status__c, User__r.FirstName, User__r.LastName, User__r.SmallPhotoUrl, User__r.Id, User__r.AboutMe, Team__r.Name FROM User_Availability__c WHERE Team__c = :teamId];
         }
 
-        for (adelwhat__User_Availability__c ava : avaList) {
-            String statusValue = ava.adelwhat__Status__c;
+        for (User_Availability__c ava : avaList) {
+            String statusValue = ava.Status__c;
             String statusLabel = statusLabelMap.get(statusValue);
 
             wrapList.add(new AvailabilityWrapper2(
-                    ava.adelwhat__User__r.FirstName,
-                    ava.adelwhat__User__r.LastName,
-                    ava.adelwhat__User__r.SmallPhotoUrl,
-                    String.valueOf(ava.adelwhat__User__r.Id),
+                    ava.User__r.FirstName,
+                    ava.User__r.LastName,
+                    ava.User__r.SmallPhotoUrl,
+                    String.valueOf(ava.User__r.Id),
                     statusValue,
                     statusLabel,
-                    ava.adelwhat__User__r.AboutMe,
+                    ava.User__r.AboutMe,
                     String.valueOf(ava.Id),
-                    ava.adelwhat__Team__r.Name
+                    ava.Team__r.Name
             ));
         }
         return wrapList;

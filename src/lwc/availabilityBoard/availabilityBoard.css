@@ -85,14 +85,31 @@ tbody tr:hover {
   transition: background-color 0.3s ease;
 }
 
+/*.status-badge {*/
+/*  padding: 0.25em 0.7em;*/
+/*  border-radius: 9999px;*/
+/*  font-weight: 600;*/
+/*  font-size: 0.85rem;*/
+/*  color: white;*/
+/*  display: inline-block;*/
+/*  user-select: none;*/
+/*  vertical-align: middle;  !* helps if td is set to vertical-align: middle *!*/
+/*  padding-bottom: 1.8em;*/
+/*}*/
+
 .status-badge {
-  padding: 0.25em 0.7em;
-  border-radius: 9999px;
-  font-weight: 600;
-  font-size: 0.85rem;
-  color: white;
+  font-weight: 900 !important;
+  font-size: 1.5rem !important;
   display: inline-block;
-  user-select: none;
+  text-align: left;
+  white-space: normal; /* allow wrapping */
+  word-wrap: break-word;
+  width: 100%; /* allow it to respect the td's width */
+
+  line-height: 1.2em;      /* helps prevent visual "bottom sinking" */
+  vertical-align: middle;  /* helps if td is set to vertical-align: middle */
+
+  padding-top: 0.1em;
 }
 
 .status-word {
@@ -125,6 +142,14 @@ tbody tr:hover {
     vertical-align: middle;
 }
 
+.usernameBox{
+		padding-left: 20px;
+		vertical-align: middle;
+		max-width: 200px;
+		word-wrap: break-word;
+		white-space: normal;
+}
+
 .box{
 		display: flex;
 		align-items: center;               /* vertical centering */
@@ -142,5 +167,36 @@ tbody tr:hover {
     line-height: 1.5em;
     max-height: calc(1.5em * 3);     /* allow less if short text */       /* Fixed height to match max lines */    /* Match line count */ /* match line height × number of lines */
 }
+
+.custom-tooltip-container {
+    position: relative;
+    display: inline-block;
+}
+
+.custom-tooltip {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 10;
+    width: 300px;
+}
+
+.custom-tooltip-container:hover .custom-tooltip {
+    display: block;
+}
+
+.red-info-icon {
+    --slds-c-icon-color-foreground-default: red;
+}
+
+.custom-table-row:nth-child(even) {
+    background-color: #eaf1fb; /* Lighter blue-gray */
+}
+
+.custom-table-row:nth-child(odd) {
+    background-color: white;
+}
+
 
 /* Add more status colors as needed */

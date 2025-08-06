@@ -4,10 +4,10 @@
     <option name="connections">
       <list>
         <IlluminatedCloudConnection>
-          <option name="connectionName" value="What" />
+          <option name="connectionName" value="adelFlagClient" />
           <option name="connectionType" value="MDAPI" />
           <option name="defaultModuleName" value="what" />
-          <option name="offlineSymbolTablePath" value="$PROJECT_DIR$/IlluminatedCloud/what/OfflineSymbolTable.zip" />
+          <option name="offlineSymbolTablePath" value="$PROJECT_DIR$/IlluminatedCloud/adelFlagClient/OfflineSymbolTable.zip" />
         </IlluminatedCloudConnection>
       </list>
     </option>

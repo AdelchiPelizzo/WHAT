@@ -234,32 +234,39 @@ export default class AvailabilityBoard extends NavigationMixin(LightningElement)
         clearInterval(this._visibilityCheckInterval);
     }
 
-    openPopout() {
-        window.open(
-            '/apex/adelwhat__AvailabilityPopoutBlinking',
-            'AvailabilityBoardPopupWindow',
-            'width=1000,height=700,resizable=yes,scrollbars=yes'
-        );
-    }
+//    openPopout() {
+//        window.open(
+//            '/apex/adelwhat__AvailabilityPopoutBlinking',
+//            'AvailabilityBoardPopupWindow',
+//            'width=1000,height=700,resizable=yes,scrollbars=yes'
+//        );
+//    }
 
-    openPopoutFiltered(event) {
-        event.preventDefault();
-        if (!this.selectedTeamId) {
-            alert('Please select a team first.');
-            return;
-        }
-        const teamParam = `&teamId=${encodeURIComponent(this.selectedTeamId)}`;
-        console.log(teamParam);
+		openPopoutFiltered(event) {
+				event.preventDefault();
 
-        window.open(
-            `/apex/adelwhat__AvailabilityPopout3?=${teamParam}`,
-            'AvailabilityBoardPopupWindow',
-            'width=1000,height=700,resizable=yes,scrollbars=yes'
-        );
-    }
+				if (!this.selectedTeamId) {
+						alert('Please select a team first.');
+						return;
+				}
 
+				const teamParam = `teamId=${encodeURIComponent(this.selectedTeamId)}`;
+				console.log(teamParam);
+
+				window.open(
+						`/apex/adelwhat__AvailabilityPopout3?${teamParam}`,
+						'AvailabilityBoardPopupWindow',
+						'width=1000,height=700,resizable=yes,scrollbars=yes'
+				);
+		}
+
+//    openPicklistSetup() {
+//      window.open('/lightning/setup/ObjectManager/01IgL000000sQqL/FieldsAndRelationships/00NgL000010uACH/view', '_blank');
+//    }
+//
     openPicklistSetup() {
-      window.open('/lightning/setup/ObjectManager/01IgL000000sQqL/FieldsAndRelationships/00NgL000010uACH/view', '_blank');
+      window.open('/lightning/setup/ObjectManager/adelwhat__User_Availability__c/FieldsAndRelationships/view', '_blank');
     }
+
 
 }

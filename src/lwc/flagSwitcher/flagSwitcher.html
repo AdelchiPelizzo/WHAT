@@ -1,5 +1,5 @@
 <template>
-    <lightning-card title="Flag Switcher - Static Data 13.47">
+    <lightning-card title="Flag Switcher - Static Data">
 
         <lightning-datatable
                 key-field="id"
@@ -10,8 +10,11 @@
                 oncellchange={handleCellChange}
                 custom-types={customTypes}>
         </lightning-datatable>
-
+        <template if:false={records}>
+            <p>🚫 No records to show</p>
+        </template>
     </lightning-card>
+
 </template>
 
 

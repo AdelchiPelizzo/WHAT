@@ -17,6 +17,17 @@
         <members>FlagCheckScheduler</members>
         <members>FlagCheckQueueable</members>
         <members>AvailabilityVFController</members>
+        <members>AvailabilityServiceTest</members>
+        <members>AvailabilityVFControllerTest</members>
+        <members>FlagCheckService</members>
+        <members>SelfSchedule</members>
+        <members>FlagProtectionBypass</members>
+        <members>ProtectFlagStatusTest</members>
+        <members>FlagCacheTest</members>
+        <members>FlagCheckQueueableTest</members>
+        <members>FlagCheckSchedulerTest</members>
+        <members>FlagCheckServiceTest</members>
+        <members>SelfScheduleTest</members>
         <name>ApexClass</name>
     </types>
     <types>
@@ -37,6 +48,10 @@
     <types>
         <members>Flag_Status__c</members>
         <name>CustomObject</name>
+    </types>
+    <types>
+        <members>ProtectFlagStatus</members>
+        <name>ApexTrigger</name>
     </types>
     <version>60.0</version>
 </Package>
