@@ -9,8 +9,12 @@ public with sharing class AvailabilityVFController {
 
     // Constructor
     public AvailabilityVFController() {
-        // Get and sanitize teamId from URL params
-        String rawTeamId = ApexPages.currentPage().getParameters().get('teamId').escapeXml();
+        // Get teamId param safely
+        String rawTeamId = ApexPages.currentPage().getParameters().get('teamId');
+        if (rawTeamId != null) {
+            rawTeamId = rawTeamId.escapeXml();
+        }
+
         if (String.isNotBlank(rawTeamId) && Pattern.matches('[a-zA-Z0-9]{15,18}', rawTeamId)) {
             // Safe for SOQL and limited to valid Id characters
             teamId = String.escapeSingleQuotes(rawTeamId);

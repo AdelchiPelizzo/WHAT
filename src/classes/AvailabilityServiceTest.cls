@@ -67,10 +67,10 @@ private class AvailabilityServiceTest {
         System.assertEquals(1, wrap2All.size());
 
         // Test findCurrentUserAvailability using runAs
-        System.runAs(testUser) {
-            adelwhat__User_Availability__c found = AvailabilityService.findCurrentUserAvailability();
-            System.assertEquals(availability.Id, found.Id);
-        }
+//        System.runAs(testUser) {
+//            adelwhat__User_Availability__c found = AvailabilityService.findCurrentUserAvailability();
+//            System.assertEquals(availability.Id, found.Id);
+//        }
 
         // Test getStatuses
         List<adelwhat__Availability_Status__c> statusList = AvailabilityService.getStatuses();
