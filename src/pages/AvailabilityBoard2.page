@@ -1,4 +1,4 @@
-<apex:page controller="adelwhat.AvailabilityService" showHeader="false" sidebar="false" cache="false">
+<apex:page controller="AvailabilityService" showHeader="false" sidebar="false" cache="false">
     <apex:slds />
     <apex:includeScript value="{!URLFOR($Resource.cometd)}" />
     <apex:includeScript value="{!URLFOR($Resource.ackExtension)}" />
@@ -85,7 +85,7 @@
 
     <body>
     <div class="slds-scope" id="board">
-        <apex:form>
+        <apex:form >
             <h2 class="slds-text-heading_medium">Team Availability Board</h2>
             <table class="availability-table">
                 <thead>

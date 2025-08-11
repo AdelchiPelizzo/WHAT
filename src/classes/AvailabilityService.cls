@@ -17,11 +17,34 @@ global with sharing class AvailabilityService {
 
     @AuraEnabled(cacheable=true)
     public static List<adelwhat__Team__c> getTeamOptions() {
-        return [SELECT Id, Name FROM adelwhat__Team__c ORDER BY Name];
+        // Check object read access before querying
+        if (!Schema.SObjectType.adelwhat__Team__c.isAccessible()) {
+            return new List<adelwhat__Team__c>();
+        }
+
+        List<adelwhat__Team__c> lsTeam =  [
+                SELECT Id, Name
+                FROM adelwhat__Team__c WITH USER_MODE
+        ];
+        // Enforce CRUD/FLS automatically using WITH USER_MODE
+        lsTeam.sort();
+        return lsTeam;
     }
 
-    @AuraEnabled
-    public static String def(){ return [SELECT DurableId, QualifiedApiName FROM EntityDefinition WHERE QualifiedApiName = 'adelwhat__User_Availability__c' LIMIT 1].DurableId;}
+
+    @AuraEnabled(cacheable=true)
+    public static String getNamespacePrefix() {
+        String fullName = AvailabilityService.class.getName(); // e.g. "adelwhat.FlagCheckService" or "FlagCheckService"
+        if (fullName.contains('.')) {
+            return fullName.split('\\.')[0] + '__';
+        }
+        return '';
+    }
+
+//    @AuraEnabled
+//    public static String def(){
+//        return [SELECT DurableId, QualifiedApiName FROM EntityDefinition WHERE QualifiedApiName = 'adelwhat__User_Availability__c' LIMIT 1].DurableId;
+//    }
 
     // Load availability data from the custom object
 //    private static void loadAvailability(String teamId) {
@@ -118,7 +141,7 @@ global with sharing class AvailabilityService {
                         adelwhat__User__r.SmallPhotoUrl,
                         adelwhat__User__r.Id,
                         adelwhat__Team__r.Name
-                FROM adelwhat__User_Availability__c
+                FROM adelwhat__User_Availability__c WITH USER_MODE
         ];
 
         if (!avaList.isEmpty()) {
@@ -153,7 +176,7 @@ global with sharing class AvailabilityService {
                 adelwhat__User__r.SmallPhotoUrl,
                 adelwhat__User__r.Id,
                 adelwhat__Team__r.Name
-                FROM adelwhat__User_Availability__c];
+                FROM adelwhat__User_Availability__c WITH USER_MODE ];
         if(!avaList.isEmpty()){
             for(adelwhat__User_Availability__c ava : avaList){
                 wrapList.add(new AvailabilityWrapper(ava.adelwhat__User__r.FirstName, ava.adelwhat__User__r.LastName, ava.adelwhat__User__r.SmallPhotoUrl, ava.adelwhat__User__r.Id, ava.adelwhat__Status__c, ava.Id, ava.adelwhat__Team__r.Name ));
@@ -271,7 +294,7 @@ global with sharing class AvailabilityService {
                             adelwhat__User__r.Id,
                             adelwhat__User__r.AboutMe,
                             adelwhat__Team__r.Name
-                    FROM adelwhat__User_Availability__c
+                    FROM adelwhat__User_Availability__c WITH USER_MODE
             ];
         } else {
             // Filter by team
@@ -285,7 +308,7 @@ global with sharing class AvailabilityService {
                             adelwhat__User__r.AboutMe,
                             adelwhat__Team__r.Name
                     FROM adelwhat__User_Availability__c
-                    WHERE adelwhat__Team__c = :teamId
+                    WHERE adelwhat__Team__c = :teamId WITH USER_MODE
             ];
         }
 
@@ -322,23 +345,30 @@ global with sharing class AvailabilityService {
             adelwhat__User__r.FirstName,
             adelwhat__User__r.LastName,
             adelwhat__User__r.Id
-            FROM adelwhat__User_Availability__c
-            WHERE adelwhat__User__r.Id = :UserInfo.getUserId()
+            FROM adelwhat__User_Availability__c W
+            WHERE adelwhat__User__r.Id = :UserInfo.getUserId() WITH USER_MODE
             ORDER BY CreatedDate DESC LIMIT 1
         ];
     }
 
     @AuraEnabled(cacheable=true)
     public static List<adelwhat__Availability_Status__c> getStatuses() {
-        List<adelwhat__Availability_Status__c> lst = [ SELECT adelwhat__Display_Label__c, adelwhat__Status_Code__c FROM  adelwhat__Availability_Status__c ];
+        List<adelwhat__Availability_Status__c> lst = [ SELECT adelwhat__Display_Label__c, adelwhat__Status_Code__c FROM  adelwhat__Availability_Status__c WITH USER_MODE ];
         return lst;
     }
 
     @AuraEnabled
     public static void upsertStatus(String payload) {
-        System.debug('payload >>> '+payload);
+        System.debug('payload >>> ' + payload);
         if (String.isBlank(payload)) {
             throw new AuraHandledException('No data received.');
+        }
+
+        if (!Schema.sObjectType.adelwhat__Availability_Status__c.isUpdateable()) {
+            throw new AuraHandledException('You do not have permission to update Availability Status records.');
+        }
+        if (!Schema.sObjectType.adelwhat__Availability_Status__c.fields.adelwhat__Display_Label__c.isUpdateable()) {
+            throw new AuraHandledException('You do not have permission to update the Display Label field.');
         }
 
         List<Object> rawList = (List<Object>) JSON.deserializeUntyped(payload);
@@ -365,5 +395,6 @@ global with sharing class AvailabilityService {
             update toUpdate;
         }
     }
+
 
 }

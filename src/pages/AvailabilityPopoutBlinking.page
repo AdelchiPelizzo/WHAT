@@ -2,7 +2,7 @@
  - Created by adpel on 13/07/2025.
  -->
 
-<apex:page id="AvailabilityPopoutBlinking" controller="adelwhat.AvailabilityService" showHeader="false" sidebar="false" cache="false">
+<apex:page id="AvailabilityPopoutBlinking" controller="AvailabilityService" showHeader="false" sidebar="false" cache="false">
     <apex:slds />
     <!-- CometD Scripts -->
     <apex:includeScript value="{!URLFOR($Resource.cometd)}" />
@@ -223,7 +223,7 @@
         <body>
         <div class="board-wrapper">
             <div class="board" id="board">
-                <apex:form>
+                <apex:form >
                     <h2 class="slds-text-heading_large" style="padding: 20px">Team <strong>{!teamName}<strong/></strong> Availability Board</h2>
                     <div>
                         <table >
@@ -263,4 +263,3 @@
         </div>
         </body>
     </apex:page>
-

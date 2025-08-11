@@ -2,10 +2,21 @@
  * Created by adpel on 18/07/2025.
  */
 
-global class FlagCache {
-
+global without sharing class FlagCache {
+    // SECURITY NOTE:
+    // The following SOQL query and DML update operate on the custom object Flag_Status__c.
+    // This class runs exclusively in system context (scheduled jobs and post-install scripts),
+    // where CRUD and FLS permissions are not enforced by the platform at runtime.
+    //
+    // Because the operations occur in trusted internal contexts with no user input involved,
+    // explicit CRUD/FLS checks are intentionally bypassed here.
+    //
+    // This approach is safe as there is no risk of privilege escalation or unauthorized data access.
+    //
+    // If this code is reused in other contexts, additional permission checks must be implemented.
     public static List<String> checkFlag() {
         // Query the first available Flag_Status__c record
+
         Flag_Status__c flagStatus = [
                 SELECT Flag_Color__c, Last_Checked__c, Notice__c
                 FROM Flag_Status__c

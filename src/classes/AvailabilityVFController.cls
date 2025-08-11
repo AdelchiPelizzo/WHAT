@@ -9,21 +9,42 @@ public with sharing class AvailabilityVFController {
 
     // Constructor
     public AvailabilityVFController() {
-        // Get teamId from URL params (if any)
-        teamId = ApexPages.currentPage().getParameters().get('teamId');
-        if (String.isNotBlank(teamId)) {
+        // Get and sanitize teamId from URL params
+        String rawTeamId = ApexPages.currentPage().getParameters().get('teamId').escapeXml();
+        if (String.isNotBlank(rawTeamId) && Pattern.matches('[a-zA-Z0-9]{15,18}', rawTeamId)) {
+            // Safe for SOQL and limited to valid Id characters
+            teamId = String.escapeSingleQuotes(rawTeamId);
+        } else {
+            teamId = null; // or handle invalid input
+        }
+
+        if (String.isNotBlank(teamId) && Schema.SObjectType.Team__c.isAccessible()) {
             try {
-                teamName = [SELECT Name FROM Team__c WHERE Id = :teamId LIMIT 1].Name;
+                teamName = [
+                        SELECT Name
+                        FROM Team__c
+                        WHERE Id = :teamId
+                        LIMIT 1
+                ].Name;
             } catch (Exception e) {
                 teamName = 'Unknown';
             }
+        } else {
+            teamName = 'Unknown';
         }
+
         availabilities = getAvailabilityByTeamId(teamId);
     }
 
     // Method to get availability records wrapped in AvailabilityWrapper2
     public List<AvailabilityWrapper2> getAvailabilityByTeamId(String teamId) {
         List<AvailabilityWrapper2> wrapList = new List<AvailabilityWrapper2>();
+
+        // Only proceed if object and required fields are accessible
+        if (!Schema.sObjectType.User_Availability__c.isAccessible() ||
+                !Schema.sObjectType.User_Availability__c.fields.Status__c.isAccessible()) {
+            return wrapList;
+        }
 
         // Map picklist values to labels
         Map<String, String> statusLabelMap = new Map<String, String>();
@@ -32,11 +53,20 @@ public with sharing class AvailabilityVFController {
             statusLabelMap.put(entry.getValue(), entry.getLabel());
         }
 
-        List<User_Availability__c> avaList;
+        List<User_Availability__c> avaList = new List<User_Availability__c>();
         if (String.isBlank(teamId)) {
-            avaList = [SELECT Id, Status__c, User__r.FirstName, User__r.LastName, User__r.SmallPhotoUrl, User__r.Id, User__r.AboutMe, Team__r.Name FROM User_Availability__c];
-        } else {
-            avaList = [SELECT Id, Status__c, User__r.FirstName, User__r.LastName, User__r.SmallPhotoUrl, User__r.Id, User__r.AboutMe, Team__r.Name FROM User_Availability__c WHERE Team__c = :teamId];
+            avaList = [
+                    SELECT Id, Status__c, User__r.FirstName, User__r.LastName,
+                            User__r.SmallPhotoUrl, User__r.Id, User__r.AboutMe, Team__r.Name
+                    FROM User_Availability__c
+            ];
+        } else if (Schema.sObjectType.Team__c.isAccessible()) {
+            avaList = [
+                    SELECT Id, Status__c, User__r.FirstName, User__r.LastName,
+                            User__r.SmallPhotoUrl, User__r.Id, User__r.AboutMe, Team__r.Name
+                    FROM User_Availability__c
+                    WHERE Team__c = :teamId
+            ];
         }
 
         for (User_Availability__c ava : avaList) {
@@ -58,7 +88,7 @@ public with sharing class AvailabilityVFController {
         return wrapList;
     }
 
-    // AvailabilityWrapper2 class without AuraEnabled (nested or separate global class)
+    // AvailabilityWrapper2 class without AuraEnabled
     public class AvailabilityWrapper2 {
         public String userFirstName { get; set; }
         public String userLastName { get; set; }
@@ -71,7 +101,9 @@ public with sharing class AvailabilityVFController {
         public String teamName { get; set; }
         public List<String> statusLetters { get; set; }
 
-        public AvailabilityWrapper2(String userFirstName, String userLastName, String photoURL, String userRecordId, String Status, String StatusLabel, String aboutMe, String availabilityId, String teamName) {
+        public AvailabilityWrapper2(String userFirstName, String userLastName, String photoURL,
+                String userRecordId, String Status, String StatusLabel,
+                String aboutMe, String availabilityId, String teamName) {
             this.userFirstName = userFirstName;
             this.userLastName = userLastName;
             this.photo = photoURL;

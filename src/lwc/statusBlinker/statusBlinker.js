@@ -96,5 +96,3 @@ export default class StatusBlinker extends LightningElement {
 
   }
 }
-
-

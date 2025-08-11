@@ -13,7 +13,6 @@
         <members>FlagCache</members>
         <members>FlagPostInstall</members>
         <members>FlagPostInstallTest</members>
-        <members>FlagControlController</members>
         <members>FlagCheckScheduler</members>
         <members>FlagCheckQueueable</members>
         <members>AvailabilityVFController</members>
@@ -28,6 +27,10 @@
         <members>FlagCheckSchedulerTest</members>
         <members>FlagCheckServiceTest</members>
         <members>SelfScheduleTest</members>
+        <members>ExternalFlagUpdateScheduler</members>
+        <members>ProtectFlagStatusTriggerTest</members>
+        <members>ScheduledJobSafe</members>
+        <members>ScheduledJobSafeTest</members>
         <name>ApexClass</name>
     </types>
     <types>

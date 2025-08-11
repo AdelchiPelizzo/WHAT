@@ -40,4 +40,19 @@ private class FlagCheckServiceTest {
         }
         Test.stopTest();
     }
+
+    @isTest
+    static void testGetNamespacePrefix() {
+        // Act
+        String ns = FlagCheckService.getNamespacePrefix();
+
+        // Assert — in dev/unmanaged org this should be empty, in managed it should end with '__'
+        if (Test.isRunningTest()) {
+            if (ns != null && ns != '') {
+                System.assert(ns.endsWith('__'), 'Namespace should end with "__" when present');
+            } else {
+                System.assertEquals('', ns, 'Expected empty namespace in unmanaged context');
+            }
+        }
+    }
 }
