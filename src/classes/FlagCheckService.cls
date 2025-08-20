@@ -31,8 +31,4 @@ public without sharing class FlagCheckService {
         }
         return '';
     }
-
-
-
-
 }

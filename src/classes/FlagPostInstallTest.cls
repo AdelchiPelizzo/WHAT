@@ -32,7 +32,7 @@ private class FlagPostInstallTest {
         // Verify a Flag_Status__c record was created with expected values
         List<Flag_Status__c> flags = [SELECT Id, Flag_Color__c, Notice__c FROM Flag_Status__c];
         System.assertEquals(1, flags.size(), 'One Flag_Status__c record should be created');
-        System.assertEquals('green', flags[0].Flag_Color__c);
+        System.assertEquals(null, flags[0].Flag_Color__c);
         System.assertEquals('Regular', flags[0].Notice__c);
 
         // Verify both scheduled jobs exist
@@ -132,6 +132,37 @@ private class FlagPostInstallTest {
         System.assert(sec >= 0 && sec < 60, 'Seconds part of cron expression should be valid');
         System.assert(min >= 0 && min < 60, 'Minutes part of cron expression should be valid');
         System.assert(hour >= 0 && hour < 24, 'Hour part of cron expression should be valid');
+    }
+
+    @IsTest
+    static void testOnUninstallCancelsJobs() {
+        // Schedule a dummy job matching the uninstall pattern
+        Datetime dt = System.now().addMinutes(1);
+        String cronExp = FlagPostInstall.buildOneTimeCron(dt);
+        String jobName = 'PostInstallExternalFlagRetry_' + dt.getTime();
+        System.schedule(jobName, cronExp, new ExternalFlagUpdateScheduler());
+
+        // Verify job exists
+        List<CronTrigger> scheduledJobs = [
+                SELECT Id, CronJobDetail.Name
+                FROM CronTrigger
+                WHERE CronJobDetail.Name = :jobName
+        ];
+        System.assertEquals(1, scheduledJobs.size(), 'Job should be scheduled');
+
+        // Call onUninstall
+        Test.startTest();
+        FlagOnUninstall unInstall = new FlagOnUninstall();
+        unInstall.onUninstall(null); // context not used
+        Test.stopTest();
+
+        // Assert job is aborted
+        List<CronTrigger> remainingJobs = [
+                SELECT Id, CronJobDetail.Name
+                FROM CronTrigger
+                WHERE CronJobDetail.Name = :jobName
+        ];
+        System.assertEquals(0, remainingJobs.size(), 'Job should be aborted by uninstall');
     }
 
 }

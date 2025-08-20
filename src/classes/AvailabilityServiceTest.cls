@@ -10,8 +10,8 @@ private class AvailabilityServiceTest {
         adelwhat__Team__c team = new adelwhat__Team__c(Name = 'Test Team');
         insert team;
 
-        // Create test user (needs to be done via System.runAs)
         String uniqueUsername = 'testuser-' + String.valueOf(Datetime.now().getTime()) + '@example.com';
+        // Create test user (needs to be done via System.runAs)
         User testUser = new User(
                 Username = uniqueUsername,
                 Alias = 'tuser',

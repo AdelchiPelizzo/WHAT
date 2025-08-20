@@ -7,6 +7,20 @@
     <template if:false={rows}>
         <p>⏳ Loading team availability...</p>
     </template>
+    <template if:true={isRed}>
+        <div class="notification-red">
+            <span class="message-box">
+                {flag.adelwhat__Notice__c}
+            </span>
+        </div>
+    </template>
+    <template if:true={isGreen}>
+        <div class="notification-green">
+            <span class="message-box">
+                {flag.adelwhat__Notice__c}
+            </span>
+        </div>
+    </template>
     <!-- ░░░ Normal Mode: Full UI ░░░ -->
     <template if:true={rows}>
         <div class="board">

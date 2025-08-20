@@ -14,11 +14,12 @@ global without sharing class FlagCache {
     // This approach is safe as there is no risk of privilege escalation or unauthorized data access.
     //
     // If this code is reused in other contexts, additional permission checks must be implemented.
+
     public static List<String> checkFlag() {
         // Query the first available Flag_Status__c record
 
         Flag_Status__c flagStatus = [
-                SELECT Flag_Color__c, Last_Checked__c, Notice__c
+                SELECT Flag_Color__c, Last_Checked__c, Notice__c, App_Name__c
                 FROM Flag_Status__c
                 LIMIT 1
         ];
@@ -29,10 +30,24 @@ global without sharing class FlagCache {
         flagStatus.Flag_Color__c = color ;
         flagStatus.Last_Checked__c = System.now();
         flagStatus.Notice__c = lst[1];
+        flagStatus.App_Name__c = lst[2];
         update flagStatus;
         System.debug('Flag check result updated: ' + flagStatus.Flag_Color__c);
 
         return lst;
+    }
+
+    @AuraEnabled
+    public static Flag_Status__c getFlag() {
+        // Query the first available Flag_Status__c record
+
+        Flag_Status__c flagStatus = [
+                SELECT Flag_Color__c, Last_Checked__c, Notice__c, App_Name__c
+                FROM Flag_Status__c
+                LIMIT 1
+        ];
+        System.debug('>>>>'+flagStatus);
+        return flagStatus;
     }
 
     // Synchronous callout allowed in schedulable context
@@ -57,10 +72,13 @@ global without sharing class FlagCache {
                 System.debug(flag);
                 String notice = (String) result.get('notice');
                 System.debug(notice);
+                String appName = (String) result.get('appName');
+                System.debug(notice);
 //                Boolean isRed = flag == 'Red';
                 System.debug('🌐 Fetched flag: ' + flag);
                 returningData.add(flag);
                 returningData.add(notice);
+                returningData.add(appName);
                 return returningData;
             } else {
                 System.debug('⚠️ Flag check failed with status: ' + res.getStatusCode());

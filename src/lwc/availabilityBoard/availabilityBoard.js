@@ -9,6 +9,7 @@ import { refreshApex } from '@salesforce/apex';
 import getUsersAvailability from '@salesforce/apex/AvailabilityService.getAvailabilityWithUser2';
 import getAvailabilityByTeamId from '@salesforce/apex/AvailabilityService.getAvailabilityByTeamId2';
 import getTeamNames from '@salesforce/apex/AvailabilityService.getTeamOptions';
+import getFlag from '@salesforce/apex/FlagCache.getFlag'
 import { CurrentPageReference } from 'lightning/navigation';
 import { NavigationMixin } from 'lightning/navigation';
 
@@ -21,7 +22,6 @@ export default class AvailabilityBoard extends NavigationMixin(LightningElement)
     teamOptions = [];
 
     selectedTeamId = '';
-
 
     /** saved wire state so we can refreshApex() later */
     wiredRows;
@@ -36,6 +36,8 @@ export default class AvailabilityBoard extends NavigationMixin(LightningElement)
     @track statusText = 'IN';          // for the standalone flip, if you keep it
 
     /* ───────────────────────── page params ────────────────────── */
+
+		@track flag = [];
 
     @wire(CurrentPageReference)
     getStateParameters(ref) {
@@ -52,6 +54,12 @@ export default class AvailabilityBoard extends NavigationMixin(LightningElement)
 				return this.rows.length > 0;
 		}
 
+		get isRed() {
+        return this.flag?.adelwhat__Flag_Color__c === 'red';
+    }
+		get isGreen() {
+        return this.flag?.adelwhat__Flag_Color__c === 'green';
+    }
 
     @wire(getAvailabilityByTeamId, {teamId: '$selectedTeamId'})
     wiredRowsHandler(value) {
@@ -140,6 +148,14 @@ export default class AvailabilityBoard extends NavigationMixin(LightningElement)
                     }));
                 })
                 .catch(error => { console.error('Error loading team options:', error); });
+				getFlag()
+						.then(result => {
+								console.log(JSON.stringify(result));
+								this.flag = result;
+						})
+						.catch(error => {
+								console.error('Error loading flag:', JSON.parse(JSON.stringify(error)));
+						});
         // If the component is used outside Lightning (e.g., VF pop‑out)
         const urlParams = new URLSearchParams(window.location.search);
         this.isPopout = urlParams.get('c__popout') === 'true';

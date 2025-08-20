@@ -33,7 +33,7 @@ private class FlagCacheTest {
         Test.stopTest();
 
         // Assert: Method returned expected values
-        System.assertEquals(2, result.size(), 'Expected 2 elements in result');
+        System.assertEquals(3, result.size(), 'Expected 2 elements in result');
         System.assertEquals('Green', result[0], 'Expected flag color');
         System.assertEquals('All systems operational', result[1], 'Expected notice');
 

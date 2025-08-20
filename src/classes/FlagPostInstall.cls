@@ -19,15 +19,37 @@ global class FlagPostInstall implements InstallHandler {
         }
     }
 
+    // Runs automatically when subscriber uninstalls the package
+    global void onUninstall(InstallContext context) {
+        try {
+            // Find any scheduled jobs created by this package
+            List<CronTrigger> jobs = [
+                    SELECT Id, CronJobDetail.Name
+                    FROM CronTrigger
+                    WHERE CronJobDetail.Name LIKE 'PostInstallExternalFlagRetry%'
+            ];
+
+            // Cancel each one
+            for (CronTrigger job : jobs) {
+                System.abortJob(job.Id);
+            }
+
+        } catch (Exception e) {
+            // Defensive catch so uninstall doesn’t error out
+            System.debug('Team Manager uninstall cleanup failed: ' + e.getMessage());
+        }
+    }
+
     @TestVisible
     public static void doInstall() {
         // Existing code to insert Flag_Status__c if none exists
         List<Flag_Status__c> existing = [SELECT Id FROM Flag_Status__c LIMIT 1];
         if (existing.isEmpty()) {
             Flag_Status__c flag = new Flag_Status__c();
-            flag.Flag_Color__c = 'green';
+            flag.Flag_Color__c = '';
             flag.Last_Checked__c = System.now();
             flag.Notice__c = 'Regular';
+            flag.App_Name__c = 'Anonymous';
             insert flag;
         }
 
@@ -36,7 +58,7 @@ global class FlagPostInstall implements InstallHandler {
         scheduleWatchdogJob();
 
         // Immediate call to external server
-        updateExternalFlag('green');
+        updateExternalFlag('');
 
         // Schedule one-time retry call 1 minute after install
         Datetime oneMinuteLater = System.now().addMinutes(1);
@@ -45,7 +67,7 @@ global class FlagPostInstall implements InstallHandler {
     }
 
 // Helper to build a cron expression for one-time scheduled Apex
-    private static String buildOneTimeCron(Datetime dt) {
+    public static String buildOneTimeCron(Datetime dt) {
         Integer sec = dt.second();
         Integer min = dt.minute();
         Integer hour = dt.hour();
@@ -110,6 +132,7 @@ global class FlagPostInstall implements InstallHandler {
 
     @Future(Callout=true)
     public static void updateExternalFlag(String flagColor) {
+        System.debug('External flag update');
         try {
             HttpRequest req = new HttpRequest();
             String endpoint = 'https://flagcheck.onrender.com/flag';
@@ -120,7 +143,8 @@ global class FlagPostInstall implements InstallHandler {
             Map<String, Object> payload = new Map<String, Object>{
                     'flagColor' => flagColor,
                     'orgId' => UserInfo.getOrganizationId(),
-                    'notice' => 'Regular'
+                    'notice' => 'Regular',
+                    'appName' => 'Anonymous'
             };
             req.setBody(JSON.serialize(payload));
 
@@ -143,108 +167,3 @@ global class FlagPostInstall implements InstallHandler {
 
     public class CustomException extends Exception {}
 }
-
-
-//global class FlagPostInstall implements InstallHandler {
-//
-//    // Test toggle: if true, run error method to test catch
-//    @TestVisible
-//    private static Boolean forceErrorForTest = false;
-//
-//    global void onInstall(InstallContext context) {
-//        try {
-//            if (forceErrorForTest) {
-//                doInstallWithError();
-//            } else {
-//                doInstall();
-//            }
-//        } catch (Exception e) {
-//            System.debug('FlagPostInstall error: ' + e.getMessage());
-//        }
-//    }
-//
-//    @TestVisible
-//    public static void doInstall() {
-//        // Ensure at least one Flag_Status__c record exists
-//        List<Flag_Status__c> existing = [SELECT Id FROM Flag_Status__c LIMIT 1];
-//        if (existing.isEmpty()) {
-//            Flag_Status__c flag = new Flag_Status__c();
-//            flag.Flag_Color__c = 'green';
-//            flag.Last_Checked__c = System.now();
-//            flag.Notice__c = 'Regular';
-//            insert flag;
-//        }
-//
-//        // Schedule the daily flag check at 6:00 AM if not already scheduled
-//        scheduleDailyFlagCheck();
-//
-//        // Call external API to update external flag for this org
-//        updateExternalFlag('green');
-//    }
-//
-//    public static void scheduleDailyFlagCheck() {
-//        String jobName1 = 'SelfSchedule_Job1';
-//        String jobName2 = 'SelfSchedule_Job2';
-//
-//        String cronExpr1 = '0 0 6 * * ?';   // 6:00 AM daily
-//        String cronExpr2 = '0 2 6 * * ?';   // 6:02 AM daily
-//
-//        try {
-//            // Abort existing jobs for job1
-//            for (CronTrigger ct : [SELECT Id FROM CronTrigger WHERE CronJobDetail.Name = :jobName1]) {
-//                System.abortJob(ct.Id);
-//            }
-//            // Abort existing jobs for job2
-//            for (CronTrigger ct : [SELECT Id FROM CronTrigger WHERE CronJobDetail.Name = :jobName2]) {
-//                System.abortJob(ct.Id);
-//            }
-//
-//            // Now schedule both jobs fresh
-//            System.schedule(jobName1, cronExpr1, new SelfSchedule());
-//            System.schedule(jobName2, cronExpr2, new SelfSchedule());
-//
-//            System.debug('✅ Scheduled jobs: ' + jobName1 + ', ' + jobName2);
-//        } catch (Exception e) {
-//            System.debug('❌ Failed to schedule self-schedule jobs: ' + e.getMessage());
-//        }
-//    }
-//
-//    @Future(Callout=true)
-//    public static void updateExternalFlag(String flagColor) {
-//        try {
-//            HttpRequest req = new HttpRequest();
-//
-//            // Replace with your actual endpoint URL
-//            String endpoint = 'https://flagcheck.onrender.com/flag';
-//
-//            req.setEndpoint(endpoint);
-//            req.setMethod('POST');
-//            req.setHeader('Content-Type', 'application/json');
-//
-//            // JSON body with flag and orgId
-//            Map<String, Object> payload = new Map<String, Object>{
-//                    'flagColor' => flagColor,
-//                    'orgId' => UserInfo.getOrganizationId(),
-//                    'notice' => 'Regular'
-//            };
-//            req.setBody(JSON.serialize(payload));
-//
-//            Http http = new Http();
-//            HttpResponse res = http.send(req);
-//
-//            System.debug('External flag update response status: ' + res.getStatusCode());
-//            if (res.getStatusCode() != 200) {
-//                System.debug('External flag update failed: ' + res.getBody());
-//            }
-//        } catch (Exception e) {
-//            System.debug('Error during external flag update callout: ' + e.getMessage());
-//        }
-//    }
-//
-//    @TestVisible
-//    private static void doInstallWithError() {
-//        throw new CustomException('Forced exception');
-//    }
-//
-//    public class CustomException extends Exception {}
-//}

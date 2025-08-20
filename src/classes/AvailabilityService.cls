@@ -175,7 +175,7 @@ global with sharing class AvailabilityService {
                 adelwhat__User__r.LastName,
                 adelwhat__User__r.SmallPhotoUrl,
                 adelwhat__User__r.Id,
-                adelwhat__Team__r.Name
+                adelwhat__Team__r.
                 FROM adelwhat__User_Availability__c WITH USER_MODE ];
         if(!avaList.isEmpty()){
             for(adelwhat__User_Availability__c ava : avaList){

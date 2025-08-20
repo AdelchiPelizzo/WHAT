@@ -27,7 +27,8 @@ export default class FlagCheckToast extends LightningElement {
 						this.showToast(
 							'Flag Check',
 							`Flag color is: ${flag[`${this.ns}Flag_Color__c`]} because ${notice}`,
-							this.mapColorToVariant(flag[`${this.ns}Flag_Color__c`])
+							this.mapColorToVariant(flag[`${this.ns}Flag_Color__c`]),
+       				"sticky"
 						);
 					} else {
 						console.log('Flag Check', `Flag color is: ${flag[`${this.ns}Flag_Color__c`]} because ${notice}`);
@@ -42,7 +43,8 @@ export default class FlagCheckToast extends LightningElement {
         this.dispatchEvent(new ShowToastEvent({
             title,
             message,
-            variant
+            variant,
+            mode
         }));
     }
 
